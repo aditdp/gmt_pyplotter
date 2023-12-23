@@ -1,0 +1,5 @@
+time,latitude,longitude,depth,mag,magType,nst,gap,dmin,rms,net,id,updated,place,type,horizontalError,depthError,magError,magNst,status,locationSource,magSource
+2021-06-05T18:18:26.889Z,-7.5554,107.2005,65.51,4.6,mb,,50,0.455,0.96,us,us7000ea3z,2021-08-24T21:35:18.040Z,"47 km SSW of Banjar, Indonesia",earthquake,7.8,5.4,0.081,51,reviewed,us,us
+2021-05-22T15:47:22.777Z,-7.7873,107.3605,67.12,4.3,mb,,110,0.431,0.8,us,us7000e5bp,2021-07-31T22:08:33.040Z,"65 km S of Banjar, Indonesia",earthquake,9.7,5.9,0.142,14,reviewed,us,us
+2020-11-01T14:34:11.015Z,-7.1501,107.6332,10,4.3,mb,,103,0.31,1.12,us,us7000cb8r,2021-01-18T23:01:57.040Z,"12 km SSE of Banjaran, Indonesia",earthquake,4.8,1.7,0.132,16,reviewed,us,us
+2020-10-25T00:56:45.775Z,-7.9934,107.9821,43,5.4,mww,,26,0.621,0.93,us,us6000cctq,2023-03-15T09:01:57.155Z,"72 km SSW of Kawalu, Indonesia",earthquake,6.9,1.8,0.073,18,reviewed,us,us
