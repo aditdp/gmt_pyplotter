@@ -1,4 +1,5 @@
 import os.path, re
+from cmd import Cmd
 from datetime import date
 
 
@@ -14,7 +15,9 @@ def separator(func):
 def file_name():
     while True:
         input_file_name = input("Name of the map: ")
-        path = f"./output/{input_file_name}.png"
+        path = os.path.join(
+            os.getcwd(), "gmt_pyplotter", "output", input_file_name, ".png"
+        )
         check_file = os.path.isfile(path)
 
         if check_file == True:
@@ -62,7 +65,7 @@ def input_size():
     print("the height will adjust to the coordinate boundary")
     while True:
         try:
-            size = int(input("Enter the map size:  "))
+            size = float(input("Enter the map size:  ").strip() or "20")
             if size > 50:
                 print("Error, the map 'size' too large")
                 print("'size' must be less than '50'")
@@ -83,13 +86,13 @@ def input_size():
 
 def color_land():
     print("leave empty for default color")
-    colr_land = str(input("Choose the color of the land :") or "lightgreen")
+    colr_land = str(input("Choose the color of the land :") or "seagreen2")
     return colr_land
 
 
 def color_sea():
     print("leave empty for default color")
-    colr_sea = str(input("Choose the color of the sea : ") or "azure")
+    colr_sea = str(input("Choose the color of the sea : ") or "lightcyan")
     return colr_sea
 
 
@@ -126,7 +129,7 @@ def input_coord_x():
 
     while True:
         try:
-            bound_x1 = float(input("Western boundary (W): "))
+            bound_x1 = float(input("Western boundary (W): ").strip() or 120)
             if bound_x1 < -180 or bound_x1 > 180:
                 print("W-E coordinate range -180 to 180 degree")
                 continue
@@ -135,7 +138,7 @@ def input_coord_x():
             continue
 
         try:
-            bound_x2 = float(input("Eastern boundary (E): "))
+            bound_x2 = float(input("Eastern boundary (E): ").strip() or 125)
             if bound_x2 < -180 or bound_x2 > 180:
                 print("W-E coordinate range -180 to 180 degree")
                 continue
@@ -155,7 +158,7 @@ def input_coord_x():
 def input_coord_y():
     while True:
         try:
-            bound_y1 = float(input("Southern boundary (S): "))
+            bound_y1 = float(input("Southern boundary (S): ").strip() or -9)
             if bound_y1 < -90 or bound_y1 > 90:
                 print("N-S coordinate range -90 to 90 degree")
                 continue
@@ -164,7 +167,7 @@ def input_coord_y():
             continue
 
         try:
-            bound_y2 = float(input("Northern boundary (N): "))
+            bound_y2 = float(input("Northern boundary (N): ").strip() or -4)
             if bound_y2 < -90 or bound_y2 > 90:
                 print("N-S coordinate range -90 to 90 degree")
                 continue
@@ -184,7 +187,7 @@ def input_coord_y():
 
 def color_palette():
     print("The 'Color Palette Tables' provided in 'example' folder.")
-    cpt_list = (
+    cpt_list = [
         "cubhelix",
         "dem1",
         "dem4",
@@ -229,8 +232,11 @@ def color_palette():
         "plasma",
         "viridis",
         "panoply",
-    )
-    print(f"List of CPT name:\n{cpt_list}")
+    ]
+    print(f"\nList of CPT name:")
+    pl = Cmd()
+    pl.columnize(cpt_list, displaywidth=80)
+
     while True:
         colr_cpt = input("Choose the CPT:  ")
         if colr_cpt in cpt_list:
@@ -307,9 +313,33 @@ def grdimage_resolution():
     return resolution, grd_res
 
 
-def date_start():
+def grdimage_mask():
     while True:
-        input_date_start = input("Enter start date (YYYYMMDD):  ")
+        mask = input("Masking the sea surface (y/n)?  ")
+        if mask == "y" or mask == "Y":
+
+            mask = "Yes"
+            print("the sea surface will be masked")
+            break
+        elif mask == "n" or mask == "N":
+
+            mask = "No"
+            print("the sea surface will not be masked")
+            break
+        else:
+            print("not a valid input..")
+            continue
+    return mask
+
+
+def date_start(*args):
+    req_type = args[0]
+    while True:
+        print(80 * ".")
+        input_date_start = input(
+            (f"Enter start date for the {req_type} (YYYYMMDD):   ").strip()
+            or "20190101"
+        )
         if not re.match("^[0-9]*$", input_date_start):
             print("error, input numbers only!")
             continue
@@ -322,6 +352,7 @@ def date_start():
             try:
                 input_date_start = date(year_start, mo_start, day_start)
                 print("start date : ", input_date_start.strftime("%B %d, %Y"))
+
                 break
             except ValueError as error:
                 print(f"error, {error}!")
@@ -330,9 +361,13 @@ def date_start():
     return input_date_start
 
 
-def date_end():
+def date_end(*args):
+    req_type = args[0]
     while True:
-        input_date_end = input("Enter end date (YYYYMMDD):  ")
+        print(80 * ".")
+        input_date_end = input(
+            (f"Enter end date for the {req_type} (YYYYMMDD):  ").strip() or "20240101"
+        )
         if not re.match("^[0-9]*$", input_date_end):
             print("error, input numbers only!")
             continue
@@ -345,12 +380,36 @@ def date_end():
             try:
                 input_date_end = date(year_end, mo_end, day_end)
                 print("end date : ", input_date_end.strftime("%B %d, %Y"))
+
                 break
             except ValueError as error:
                 print(f"error, {error}!")
                 continue
 
     return input_date_end
+
+
+def date_start_end(*args):
+    req_type = args[0]
+    while True:
+        in_date_start = date_start(req_type)
+        in_date_end = date_end(req_type)
+        delta = in_date_end - in_date_start
+        days = delta.days
+        if days <= 0:
+            print("error, the end time must later than the start time")
+            continue
+        else:
+            print(
+                f"The data used is {days} days from ",
+                in_date_start.strftime("%B %d, %Y"),
+                "to",
+                in_date_end.strftime("%B %d, %Y"),
+            )
+
+            break
+    return in_date_start, in_date_end, days
+
 
 def inset_loc():
     while True:
@@ -368,56 +427,171 @@ def inset_loc():
         match justify:
             case "1":
                 justify = "TL"
+                just_code = "Top Left"
                 break
             case "2":
                 justify = "TC"
+                just_code = "Top Center"
                 break
             case "3":
                 justify = "TR"
+                just_code = "Top Right"
                 break
             case "4":
                 justify = "ML"
+                just_code = "Mid Left"
                 break
             case "5":
                 justify = "MC"
+                just_code = "Mid Center"
                 break
             case "6":
                 justify = "MR"
+                just_code = "Mid Right"
                 break
             case "7":
                 justify = "BL"
+                just_code = "Bot Left"
                 break
             case "8":
                 justify = "BC"
+                just_code = "Bot Center"
                 break
             case "9":
                 justify = "BR"
+                just_code = "Bot Right"
                 break
             case _:
-                print("Error, choose between 1 - 6 !")
+                print("Error, choose between 1 - 9 !")
                 continue
-    return justify
-            
-            
+    if justify == "TR":
+        just_north = "TL"
+    else:
+        just_north = "TR"
+    return justify, just_north, just_code
 
-def date_start_end():
+
+def eq_mag_range(*args):
+    req_type = args[0]
     while True:
-        in_date_start = date_start()
-        in_date_end = date_end()
-        delta = in_date_end - in_date_start
-        days = delta.days
-        if days <= 0:
-            print("error, end time must later than start time")
-            continue
-        else:
-            print(
-                f"Data used is {days} days from ",
-                in_date_start.strftime("%B %d, %Y"),
-                "to",
-                in_date_end.strftime("%B %d, %Y"),
+        try:
+            print(80 * ".")
+            print(f"Enter the minimum magnitude for the {req_type}")
+            min_eq_mag = int(
+                input("\x1B[3m(leave empty for default value)\x1b[0m  :   ").strip()
+                or "0"
             )
+
+            if min_eq_mag < 0 or min_eq_mag > 10:
+                print("Magnitude range between 0 to 10")
+                continue
+        except ValueError:
+            print("Input numbers only!")
+            continue
+
+        try:
+            print(80 * ".")
+            print(f"Enter the maximum magnitude for the {req_type}")
+            max_eq_mag = int(
+                input("\x1B[3m(leave empty for default value)\x1b[0m  :   ").strip()
+                or "10"
+            )
+
+            if max_eq_mag < 0 or max_eq_mag > 10:
+                print("Magnitude range between 0 to 10")
+                continue
+        except ValueError:
+            print("Input numbers only!")
+            continue
+
+        if min_eq_mag >= max_eq_mag:
+            print("\nThe minimum magnitude must be lower than the maximum\n")
+            continue
+        elif min_eq_mag < max_eq_mag:
             break
-    return in_date_start, in_date_end, days
+    return min_eq_mag, max_eq_mag
+
+
+def eq_depth_range(*args):
+    req_type = args[0]
+    while True:
+        try:
+            print(80 * ".")
+            print(f"Enter the minimum depth for the {req_type}")
+            min_eq_depth = int(
+                input("\x1B[3m(leave empty for default value)\x1b[0m  :   ").strip()
+                or "0"
+            )
+
+            if min_eq_depth < 0 or min_eq_depth > 1000:
+                print("The depth range between 0 to 1000")
+                continue
+        except ValueError:
+            print("Input numbers only!")
+            continue
+
+        try:
+            print(80 * ".")
+            print(f"Enter the maximum depth for the {req_type}")
+            max_eq_depth = int(
+                input("\x1B[3m(leave empty for default value)\x1b[0m  :   ").strip()
+                or "1000"
+            )
+
+            if max_eq_depth < 0 or max_eq_depth > 1000:
+                print("The depth range between 0 to 1000")
+                continue
+        except ValueError:
+            print("Input numbers only!")
+            continue
+
+        if min_eq_depth >= max_eq_depth:
+            print("\nMinimum depth must be lower than maximum\n")
+            continue
+        elif min_eq_depth < max_eq_depth:
+            break
+    return min_eq_depth, max_eq_depth
+
+
+def eq_catalog_source():
+    while True:
+        print("Choose the earthquake catalog service: ")
+        print("  1. USGS - NEIC PDE")
+        print("  2. ISC Bulletin")
+        # print("  3. GlobalCMT")
+        eq_cata = input("Earthquake catalog:  ")
+        match eq_cata:
+            case "1" | "1." | "USGS" | "usgs" | "NEIC":
+                eq_cata = "USGS"
+                print(80 * ".")
+                print(
+                    "using earthquake catalog from USGS Preliminary Determination of Epicenters"
+                )
+                print(70 * ".")
+                break
+            case "2" | "2." | "ISC" | "isc" | "ISC Bulletin":
+                eq_cata = "ISC"
+                print(70 * ".")
+                print(
+                    "using earthquake catalog from International Seismology Centre Bulletin"
+                )
+                break
+            # case "3" | "3." | "GCMT" | "gcmt" | "GlobalCMT":
+            #     eq_cata = "GlobalCMT"
+            #     print("using earthquake catalog from Blobal Centroid Moment Tensor")
+            #     break
+            case _:
+                print("error, pleace choose correctly..")
+                continue
+    return eq_cata
+
+
+# def north_arrow():
+
+
+def eq_legend():
+    calculation = 10
+    return calculation
 
 
 # def map_layout():
@@ -445,3 +619,19 @@ def date_start_end():
 #             print("Please choose between 1 or 2..\n")
 #             continue
 #     return user_map_type
+
+
+def load_eq():
+    # file name, longitude, lattitude, magnitude, depth
+    print("Place the earthquake info in data directory before proceed..")
+    print("column order separate with space and the first column start from 1")
+    print("for example: 1 2 3 4")
+    print("|longitude|--|lattitude|--|magnitude|--|depth|")
+    eq_column_order = list(map(input("the column order:  ").strip().split))[:4]
+    eq_column_lon = eq_column_order[0]
+    eq_column_lat = eq_column_order[1]
+    eq_column_dep = eq_column_order[2]
+    eq_column_mag = eq_column_order[3]
+    print("Load the earthquake data from user")
+    eq_user_fname = input("\nfile name:  ")
+    path = os.path.join(os.getcwd(), "gmt_pyplotter", "data", ".png")

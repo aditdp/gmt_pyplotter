@@ -1,5 +1,5 @@
-import user_input as ui
-import utils
+from . import user_input as ui
+from . import utils
 import os, copy
 from itertools import zip_longest
 
@@ -91,12 +91,6 @@ class Projection:
             return f"-J{self.proj}{Coordinate.mid_x(self)}/{Coordinate.mid_y(self)}/{self.size}c+z100"
 
 
-# class InsetMap(Coordinate, Projection):
-#     def __init__(self):
-#         Coordinate.__init__(self)
-#         Projection.__init__(self)
-
-
 class Layer(FileName, Coordinate, Projection):
     def __init__(self):
         FileName.__init__(self)
@@ -106,7 +100,7 @@ class Layer(FileName, Coordinate, Projection):
         MainMap.general_info(self)
         print("Adding layer for main map..\n")
         self.layers = dict()
-        for layer in range(1, 6):
+        for layer in range(1, 7):
             self.layers[f"Layer {layer}"] = self.input_map_fill()
             utils.screen_clear()
             MainMap.general_info(self)
@@ -126,15 +120,22 @@ class Layer(FileName, Coordinate, Projection):
         """User input for map fill layer"""
 
         while True:
-            print("\nThe map layer:")
+            print("")
+            print(70 * ".")
+            print("The map layer:")
             print("1. Coastal line")
-            print("2. Earth relief")
-            print("3. Contour line")
-            print("4. Earthquake plot")
-            print("5. Focal mechanism plot")
+            print("2. Earth relief*")
+            print("3. Contour line*")
+            print("4. Earthquake plot*")
+            print("5. Focal mechanism plot*")
             print("6. Indonesia Regional Tectonics")
             print("7. Map inset")
             print("0. Cancel")
+            print(
+                "\x1B[3mThe layers followed by * need internet connection to operate\x1B[0m"
+            )
+            print(70 * ".")
+            print("")
             user_map_fill = input("Choose the map layer: ")
 
             if user_map_fill == "1":
@@ -185,14 +186,14 @@ class Layer(FileName, Coordinate, Projection):
                 break
 
             else:
-                print("Please choose between 1 to 6")
+                print("Please choose between 1 to 7")
                 print("or 0 for cancel adding more layer")
                 continue
         return user_layer
 
     @property
     def layer_base(self):
-        self.__layer = f"gmt begin {self.name} png \n\tgmt basemap {self.coord_script} {self.proj_script} -Ba\n"
+        self.__layer = f"gmt begin {self.name} png \n\tgmt basemap {self.coord_script} {self.proj_script} -Ba -TdjTR+l,,,N+o0.5c \n"
 
         self.base_script = {
             "projection": self.proj_script,
@@ -204,7 +205,7 @@ class Layer(FileName, Coordinate, Projection):
     def layer_coast(self):
         self.__colr_land = ui.color_land()
         self.__colr_sea = ui.color_sea()
-        self.__layer = f"\tgmt coast -S{self.__colr_sea} -G{self.__colr_land}\n"
+        self.__layer = f"\tgmt coast -S{self.__colr_sea}  -EID+g{self.__colr_land} -Glightsteelblue2 -TdjTR+l,,,N+o0.5c \n"
         self.coast = {
             "Type": "coast",
             "Land color": self.__colr_land,
@@ -218,13 +219,18 @@ class Layer(FileName, Coordinate, Projection):
         self.__shading, shade = ui.grdimage_shading()
         self.__cpt_color = ui.color_palette()
         self.__resolution, res = ui.grdimage_resolution()
-        self.__layer = f"\tgmt grdimage {self.__resolution} {self.__shading} -S{self.__cpt_color} \n"
+        self.__masking = ui.grdimage_mask()
+        if self.__masking == "Yes":
+            self.__layer = f"\tgmt grdimage {self.__resolution} {self.__shading} -C{self.__cpt_color} \n\tgmt coast -Sazure"
+        else:
+            self.__layer = f"\tgmt grdimage {self.__resolution} {self.__shading} -C{self.__cpt_color} \n"
 
         self.grdimage = {
             "Type": "earth relief",
             "shading": shade,
             "cpt": self.__cpt_color,
             "resolution": res,
+            "mask the sea": self.__masking,
             "script": self.__layer,
         }
         return self.grdimage
@@ -232,7 +238,7 @@ class Layer(FileName, Coordinate, Projection):
     def layer_contour(self):
         self.__contours_major = input("Major contours interval (meters):  ")
         self.__contours_minor = input("Minor contours interval (meters):  ")
-        self.__layer = f"\tgmt grdcontour @earth_relief_15s -A{self.__contours_major} -C{self.__contours_minor} -Wathin,gray50 -Wcfaint,gray90"
+        self.__layer = f"\tgmt grdcontour @earth_relief_15s -A{self.__contours_major} -C{self.__contours_minor} -Wathin,gray50 -Wcfaint,gray90 -TdjTL+l,,,N \n"
 
         self.contour = {
             "Type": "contour",
@@ -243,22 +249,50 @@ class Layer(FileName, Coordinate, Projection):
         return self.contour
 
     def layer_indo_tecto(self):
-        fault = os.getcwd() + "/data/fault_sukamto2011"
+        fault = os.path.join(os.getcwd(), "gmt_pyplotter", "data", "fault_sukamto2011")
         self.__layer = f"\tgmt  plot {fault} -W1p,black,solid -Sf+1i/0.2i+l+t\n"
 
         self.indo_tecto = {"script": self.__layer}
         return self.indo_tecto
 
     def layer_earthquake(self):
-        self.eq_file = f"{os.getcwd()}/data/{self.name}_usgs.txt"
-        self.__scaler = float(self.map_size) * 0.0005
+        self.__source = ui.eq_catalog_source()
+        self.eq_file = os.path.join(
+            os.getcwd(),
+            "gmt_pyplotter",
+            "data",
+            f"{self.name}_{self.__source}-catalog.txt",
+        )
 
-        self.__usgs_date = ui.date_start_end()
+        self.__scaler = float(self.map_size) * 0.0005
+        self.__eq_date = ui.date_start_end("earthquake catalog")
+        self.__eq_mag = ui.eq_mag_range("earthquake catalog")
+        self.__eq_depth = ui.eq_depth_range("earthquake catalog")
+        match self.__source:
+            case "USGS":
+                self.__lonlatdepmag = f"$3,$2,$4,$5*$5*{str(self.__scaler)}"
+                utils.usgs_downloader(
+                    self.eq_file,
+                    self.boundary,
+                    self.__eq_date,
+                    self.__eq_mag,
+                    self.__eq_depth,
+                )
+            case "ISC":
+                self.__lonlatdepmag = f"$7,$6,$8,$12*$12*{str(self.__scaler)}"
+                utils.isc_downloader(
+                    self.eq_file,
+                    self.boundary,
+                    self.__eq_date,
+                    self.__eq_mag,
+                    self.__eq_depth,
+                )
+
         if os.name == "posix":
             self.__layer = (
                 f"\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n"
-                + """\tgawk -F "," '{ print $3,$2,$4,$5*$5*"""
-                + str(self.__scaler)
+                + """\tgawk -F "," '{ print """
+                + self.__lonlatdepmag
                 + "}' "
                 + self.eq_file
                 + """| gmt plot -C -Scc -hi1 -Wfaint\n"""
@@ -266,36 +300,49 @@ class Layer(FileName, Coordinate, Projection):
         elif os.name == "nt":
             self.__layer = (
                 f"\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n"
-                + """\tgawk -F "," "{ print $3,$2,$4,$5*$5*"""
-                + str(self.__scaler)
+                + """\tgawk -F "," "{ print """
+                + self.__lonlatdepmag
                 + '}" '
                 + self.eq_file
                 + """| gmt plot -C -Scc -hi1 -Wfaint\n"""
             )
-        utils.usgs_downloader(self.eq_file, self.boundary, self.__usgs_date)
         self.earthquake = {
-            "Type": "earthquake plot",
-            "Source": "USGS",
-            "Date start": str(self.__usgs_date[0]),
-            "Date end": str(self.__usgs_date[1]),
-            "nDay": str(self.__usgs_date[2]),
+            "Type": "earthquake",
+            "Source": self.__source,
+            "Depth": f"{self.__eq_depth[0]}-{self.__eq_depth[1]} km",
+            "Magnitude": f"{self.__eq_mag[0]}-{self.__eq_mag[1]}",
+            "Date start": str(self.__eq_date[0]),
+            "Date end": str(self.__eq_date[1]),
+            "nDay": str(self.__eq_date[2]),
             "script": self.__layer,
         }
 
         return self.earthquake
 
     def layer_focmec(self):
-        self.fm_file = f"{self.name}_gcmt"
-        self.__gcmt_date = ui.date_start_end()
+        self.fm_file = os.path.join(
+            os.getcwd(), "gmt_pyplotter", "data", f"{self.name}_gcmt.txt"
+        )
+        self.__gcmt_date = ui.date_start_end("focal mechanism")
+        self.__gcmt_mag = ui.eq_mag_range("focal mechanism")
+        self.__gcmt_depth = ui.eq_depth_range("focal mechanism")
         self.__scaler = float(self.map_size) * 0.02
-        self.__layer = "\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n\tgmt meca ../data/{}.csv -Sd{}c+f0 -C -W0.1p,gray50\n".format(
+        self.__layer = "\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n\tgmt meca {} -Sd{}c+f0 -C -W0.1p,gray50\n".format(
             self.fm_file,
             self.__scaler,
         )
-        utils.gcmt_downloader(self.fm_file, self.boundary, self.__gcmt_date)
+        utils.gcmt_downloader(
+            self.fm_file,
+            self.boundary,
+            self.__gcmt_date,
+            self.__gcmt_mag,
+            self.__gcmt_depth,
+        )
         self.focmec = {
-            "Type": "focal mechanism",
+            "Type": "focmech",
             "Source": "Global CMT",
+            "Depth": f"{self.__gcmt_depth[0]}-{self.__gcmt_depth[1]} km",
+            "Magnitude": f"{self.__gcmt_mag[0]}-{self.__gcmt_mag[1]}",
             "Date start": str(self.__gcmt_date[0]),
             "Date end": str(self.__gcmt_date[1]),
             "nDay": str(self.__gcmt_date[2]),
@@ -305,42 +352,69 @@ class Layer(FileName, Coordinate, Projection):
         return self.focmec
 
     def layer_inset(self):
-        x_add = (self.x2 - self.x1) * 3
-        y_add = (self.y2 - self.y1) * 3
-        x1 = self.x1 - x_add
-        x2 = self.x2 + x_add
-        y1 = self.y1 - y_add
-        y2 = self.y2 + y_add
-        ratio = (self.y2 - self.y1) / (self.x2 - self.x1)
+        width = abs(self.x2 - self.x1)
+        height = abs(self.y2 - self.y1)
+        ratio = height / width
+        if width >= height:
+            longer = width
+        else:
+            longer = height
+        ##  untuk ukuran inset dengan persentase dari nilai aspect ratio peta
+        match longer:
+            case longer if longer < 1.25:
+                dilatation = longer * 3.5
+            case longer if longer >= 1.25 and longer < 2.5:
+                dilatation = longer * 3
+            case longer if longer >= 2.5 and longer < 5:
+                dilatation = longer * 2.5
+            case longer if longer >= 5 and longer < 15:
+                dilatation = longer * 2
+            case longer if longer >= 15:
+                dilatation = longer * 1.5
+
+        center_x = self.x1 + (width / 2)
+        center_y = self.y1 + (height / 2)
+
+        x1 = center_x - dilatation
+        x2 = center_x + dilatation
+        y1 = center_y - dilatation
+        y2 = center_y + dilatation
+        map_height = self.size * ratio
+
+        if map_height >= self.size:
+            self.inset_size = self.size / 3
+        else:
+            self.inset_size = map_height / 3
+
         self.inset_coord = (x1, x2, y1, y2)
-
         self.inset_R = f"-R{self.inset_coord[0]}/{self.inset_coord[1]}/{self.inset_coord[2]}/{self.inset_coord[3]}"
-        self.inset_width = self.size / 3
-        self.inset_height = self.inset_width * ratio
-        self.inset_just = ui.inset_loc()
-        self.inset_offset = self.size / 50
-        self.rectangle = f">\n{self.x1}\t{self.y1}\n{self.x1}\t{self.y2}\n>\n{self.x1}\t{self.y2}\n{self.x2}\t{self.y2}\n>\n{self.x2}\t{self.y2}\n{self.x2}\t{self.y1}\n>\n{self.x2}\t{self.y1}\n{self.x1}\t{self.y1}"
-        utils.file_writer("w", f"rect_{self.name}", self.rectangle, format=".txt")
 
-        self.__layer = """\tgmt inset begin -Dj{}+w{:.2f}c/{:.2f}c+o{:.2f}c -F+c0.1c
-        gmt coast {} -JM{:.2f} -Sazure -Glightgreen -Ba -BneWS -X0.8c -Y0.5c --FORMAT_GEO_MAP=ddd:mm --MAP_FRAME_TYPE=plain
+        self.inset_just = ui.inset_loc()
+        self.inset_offset = self.size * 0.01
+        self.rectangle = f">\n{self.x1}\t{self.y1}\n{self.x1}\t{self.y2}\n>\n{self.x1}\t{self.y2}\n{self.x2}\t{self.y2}\n>\n{self.x2}\t{self.y2}\n{self.x2}\t{self.y1}\n>\n{self.x2}\t{self.y1}\n{self.x1}\t{self.y1}"
+        utils.file_writer("w", f"rect_{self.name}.txt", self.rectangle)
+
+        self.__layer = """\tgmt inset begin -Dj{}+w{:.2f}c/{:.2f}+o{}c
+        gmt coast {} -JM{:.2f} -Slightcyan -Glightsteelblue2 -EID+gseagreen2 -Ba+e -BnEwS --FORMAT_GEO_MAP=ddd:mm --MAP_FRAME_TYPE=inside --FONT_ANNOT_PRIMARY=auto,Courier-Bold,grey40
         gmt plot rect_{}.txt -Wthin,red {} -JM{:.2f}
-    gmt inset end\n""".format(
-            self.inset_just,
-            self.inset_width,
-            self.inset_height,
+        gmt inset end\n\tgmt basemap -Tdj{}+l,,,N+o0.5c\n """.format(
+            self.inset_just[0],
+            self.inset_size,
+            self.inset_size + (self.inset_size * 0.1),
             self.inset_offset,
             self.inset_R,
-            self.inset_width - 1,
+            self.inset_size,
             self.name,
             self.inset_R,
-            self.inset_width - 1,
+            self.inset_size,
+            self.inset_just[1],
         )
 
         print("inset map added..")
 
         self.inset = {
             "Type": "inset",
+            "Loc": self.inset_just[2],
             "script": self.__layer,
         }
         return self.inset
@@ -359,23 +433,23 @@ class Layer(FileName, Coordinate, Projection):
     def layer_writer(self):
         match os.name:
             case "posix":
-                extension = ".gmt"
+                script_name = f"{self.name}.gmt"
             case "nt":
-                extension = ".bat"
-        print(f"nama file: {self.name}")
-        utils.file_writer("w", self.name, self.layer_base[1], format=extension)
+                script_name = f"{self.name}.bat"
+        print(f"creating GMT script: {self.name}")
+        utils.file_writer("w", script_name, self.layer_base[1])
 
         for layer in range(1, len(self.layers) + 1):
             utils.file_writer(
                 "a",
-                self.name,
+                script_name,
                 (self.layers[f"Layer {layer}"]["script"]),
-                format=extension,
             )
-        utils.file_writer("a", self.name, "gmt end", format=extension)
+        utils.file_writer("a", script_name, "gmt end")
 
 
 class MainMap(Layer):
+    ''' The parent class which create '''
     def __init__(self):
         Layer.__init__(self)
 
@@ -388,11 +462,10 @@ class MainMap(Layer):
         general = f"""
 {"  MAP PARAMETER  ".center(80, "=")} 
 
-    File name  : {self.name:<20} Coordinate :
-    Projection : {proj:<24} West : {self.x1:<13} South : {self.y1}
-    Map size   : {self.size} cm{19*" "} East : {self.x2:<13} North : {self.y2}
-        
-        """
+File name  : {self.name:<20} Coordinate :
+Projection : {proj:<24} West : {self.x1:<13} South : {self.y1}
+Map size   : {self.size} cm{19*" "} East : {self.x2:<13} North : {self.y2}
+"""
         print(general)
 
     def layer_info(self):
@@ -524,6 +597,43 @@ class MainMap(Layer):
                 print((80 * "-"))
                 for l1, l2 in zip(dkeys, dvalues):
                     print(f"  {l1[3]:<10}: {l2[3]:<15} {l1[4]:<10}: {l2[4]:<15} ")
+        
+            case 6:
+                dkeys = list(
+                    zip_longest(
+                        layer_print["Layer 1"],
+                        layer_print["Layer 2"],
+                        layer_print["Layer 3"],
+                        layer_print["Layer 4"],
+                        layer_print["Layer 5"],
+                        layer_print["Layer 6"],
+                        fillvalue=" ",
+                    )
+                )
+
+                dvalues = list(
+                    zip_longest(
+                        layer_print["Layer 1"].values(),
+                        layer_print["Layer 2"].values(),
+                        layer_print["Layer 3"].values(),
+                        layer_print["Layer 4"].values(),
+                        layer_print["Layer 5"].values(),
+                        layer_print["Layer 6"].values(),
+                        fillvalue=" ",
+                    )
+                )
+
+                print(" ", (21 * " ").join(self.__columns[0:3]))
+                print((80 * "-"))
+                for l1, l2 in zip(dkeys, dvalues):
+                    print(
+                        f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15} {l1[2]:<10}: {l2[2]:<15} "
+                    )
+                print((80 * "-"))
+                print(" ", (21 * " ").join(self.__columns[3:6]))
+                print((80 * "-"))
+                for l1, l2 in zip(dkeys, dvalues):
+                    print(f"  {l1[3]:<10}: {l2[3]:<15} {l1[4]:<10}: {l2[4]:<15} {l1[5]:<10}: {l2[5]:<15} ")
         print((80 * "="))
 
     def gmt_execute(self):
