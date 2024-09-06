@@ -4,11 +4,12 @@ from pyplotter import utils, map_class
 import os, sys
 
 
-utils.is_gmt_installed()
-utils.screen_clear()
-utils.header()
-
 try:
+    utils.screen_clear()
+    utils.header()
+    utils.is_gmt_installed()
+    utils.screen_clear()
+    utils.header()
     map_main = map_class.MainMap()
     utils.screen_clear()
     map_main.general_info()
@@ -20,6 +21,7 @@ try:
     print(f" {map_main.name}.png successfully created in output folder")
 except KeyboardInterrupt:
     print("\n\nexiting the program..\n")
+    utils.loading_bar(0,100)
     print(" End of the program ".center(80, "="))
     try:
         sys.exit(130)

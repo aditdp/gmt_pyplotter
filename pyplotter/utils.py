@@ -15,6 +15,7 @@ def header():
     print("")
     print(80 * "=")
     print("")
+    
     # print(
     #     """there is 4 stage for creating map
     #       1. Main map coordinate
@@ -166,20 +167,22 @@ def is_gmt_installed():
             "gmt --version", shell=shelll, stdout=subprocess.PIPE
         ).stdout
         gmt_ver = getVersion.read()
-        ver_number = gmt_ver.decode()
-        print(f"GMT is installed at :   {gmt_location}")
+        ver_number = gmt_ver.decode().rstrip()
+        
         if float(ver_number[0:3]) >= 6.2:
-            print(f"GMT version {ver_number}")
-            print("loading..")
-            time.sleep(1)
-
+            logo_brin(f"GMT is installed at : {gmt_location}",f"GMT version {ver_number}"," ")
+            
+            # print("\nloading..")
+            time.sleep(0)
+            loading_bar(0,100)
         else:
-            print("Please install GMT version 6.2.0 or latter..")
-            print("https://docs.generic-mapping-tools.org/latest/install.html")
+            logo_brin("Please install GMT version 6.2.0 or latter..","https://docs.generic-mapping-tools.org/latest/install.html","")
+                    
             input("Press any key to abort ..")
             sys.exit(" Upgrade the GMT version to 6.2.0 or latter ..")
 
     else:
+        logo_brin()
         print(
             "Generic Mapping Tools is required, please download and install GMT version 6.2.0 or latter.."
         )
@@ -187,8 +190,66 @@ def is_gmt_installed():
         input("Press any key to abort ..")
         sys.exit("GMT is not installed")
 
-def loading_bar():
-    x=2
-    
+def logo_brin(*args):
+    pr1 = args[0]
+    pr2 = args[1]
+    pr3 = args[2]
+    print(f'''\033[91m
+                 ↑↑↑↑↑↑↑↑↑↑↑↑             
+                  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑       
+       ↑↑↑↑↑↑      ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑        \033[00m {pr1} \033[91m
+     ↑↑↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑↑↑ ↑↑↑↑↑↑      \033[00m {pr2} \033[91m
+    ↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑    \033[00m {pr3} \033[91m
+   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑        ↑↑↑↑↑   
+   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑   ↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑  
+   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑  
+    ↑↑↑↑↑↑↑↑↑↑↑↑      ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ 
+      ↑↑↑↑↑↑↑↑↑        ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ 
+                                          
+ ↑↑                   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ 
+ ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  
+ ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  
+  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑   
+   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑    
+    ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑     \033[00m _____________________________________\033[91m
+      ↑↑↑↑↑↑↑   ↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑      \033[00m  © BRIN \033[91m     
+        ↑↑↑↑↑↑↑↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑        \033[00m  Badan Riset dan Inovasi Nasional\033[91m 
+          ↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑          \033[00m \x1B[3m National Research and Innovation \033[91m 
+                ↑↑↑↑↑↑↑↑↑↑↑↑              \033[00m \x1B[3m Agency of Indonesia  ''') 
+
+def loading_bar(begin, end):
+    print(f'\n')
+    for x in range(begin, end + 1):
+        percent = 73 * (x / end)
+        bar = "█" * int(percent) + "-" * (73 - int(percent))
+        print(f"\r|{bar}| {100*x/end:.0f}%", end="\r")
+        x + 1
+        time.sleep(0.02)
+        
 def finalization_bar():
     loading_bar
+    print()
+    
+    #  ↑↑↑↑↑↑↑      ↑↑↑↑↑↑     ↑    ↑↑     ↑ 
+#  ↑     ↑↑     ↑     ↑    ↑    ↑ ↑↑   ↑ 
+#  ↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑    ↑    ↑   ↑↑ ↑ 
+#  ↑     ↑↑     ↑     ↑    ↑    ↑     ↑↑ 
+#  ↑↑↑↑↑↑↑      ↑     ↑    ↑    ↑      ↑             
+# 
+#   ██████████   ██████████    ███   █████    ███
+#   ███     ███  ███     ███   ███   ██████   ███ 
+#   ███     ███  ███     ███   ███   ███ ███  ███ 
+#   ██████████   ██████████    ███   ███  ███ ███ 
+#   ███     ███  ███     ███   ███   ███   ██████ 
+#   ███     ███  ███     ███   ███   ███    █████ 
+#   ██████████   ███     ███   ███   ███     ████
+#   
+# ______   ______ _____ __   _
+# |_____] |_____/   |   | \  |
+# |_____] |    \_ __|__ |  \_|
+# 
+# 
+#  __   __        
+# |__) |__) | |\ |
+# |__) |  \ | | \|
+# 
