@@ -1,16 +1,25 @@
 from . import user_input as ui
 from . import utils
-import os, copy
+import os, copy, sys
 from itertools import zip_longest
 
 
 class FileName:
     def __init__(self) -> str:
-        self.fname = ui.file_name()
+        self.output_path = ui.save_loc()
+        self.fname = ui.file_name(self.output_path)
 
     @property
     def name(self):
         return self.fname
+
+    @property
+    def dir_output_path(self):
+        return self.output_path
+
+    @property
+    def fig_output_path(self):
+        return os.path.join(f"{self.output_path}{self.fname}.png")
 
     # @name.setter
     # def name(self, new_name):
@@ -249,7 +258,11 @@ class Layer(FileName, Coordinate, Projection):
         return self.contour
 
     def layer_indo_tecto(self):
-        fault = os.path.join(os.getcwd(), "gmt_pyplotter", "data", "fault_sukamto2011")
+        pardirs = os.path.pardir
+        print(pardirs)
+        fault = os.path.join(
+            os.path.pardir, "gmt_pyplotter", "data", "fault_sukamto2011"
+        )
         self.__layer = f"\tgmt  plot {fault} -W1p,black,solid -Sf+1i/0.2i+l+t\n"
 
         self.indo_tecto = {"script": self.__layer}
@@ -258,16 +271,17 @@ class Layer(FileName, Coordinate, Projection):
     def layer_earthquake(self):
         self.__source = ui.eq_catalog_source()
         self.eq_file = os.path.join(
-            os.getcwd(),
-            "gmt_pyplotter",
-            "data",
+            self.dir_output_path,
             f"{self.name}_{self.__source}-catalog.txt",
         )
 
         self.__scaler = float(self.map_size) * 0.0005
-        self.__eq_date = ui.date_start_end("earthquake catalog")
-        self.__eq_mag = ui.eq_mag_range("earthquake catalog")
-        self.__eq_depth = ui.eq_depth_range("earthquake catalog")
+        if self.__source == "From user":
+            pass
+        else:
+            self.__eq_date = ui.date_start_end("earthquake catalog")
+            self.__eq_mag = ui.eq_mag_range("earthquake catalog")
+            self.__eq_depth = ui.eq_depth_range("earthquake catalog")
         match self.__source:
             case "USGS":
                 self.__lonlatdepmag = f"$3,$2,$4,$5*$5*{str(self.__scaler)}"
@@ -287,7 +301,13 @@ class Layer(FileName, Coordinate, Projection):
                     self.__eq_mag,
                     self.__eq_depth,
                 )
-
+            case "From user":
+                self.eq_file = ui.load_eq()
+                self.column = ui.column_order(self.eq_file)
+                self.__eq_date = ("-", "-", "-")
+                self.__eq_mag = (self.column[4][3], self.column[4][4])
+                self.__eq_depth = (self.column[4][1], self.column[4][2])
+                self.__lonlatdepmag = f"${self.column[0]},${self.column[1]},${self.column[2]},${self.column[3]}*${self.column[3]*{str(self.__scaler)}},"
         if os.name == "posix":
             self.__layer = (
                 f"\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n"
@@ -320,9 +340,7 @@ class Layer(FileName, Coordinate, Projection):
         return self.earthquake
 
     def layer_focmec(self):
-        self.fm_file = os.path.join(
-            os.getcwd(), "gmt_pyplotter", "data", f"{self.name}_gcmt.txt"
-        )
+        self.fm_file = os.path.join(self.dir_output_path, f"{self.name}_gcmt.txt")
         self.__gcmt_date = ui.date_start_end("focal mechanism")
         self.__gcmt_mag = ui.eq_mag_range("focal mechanism")
         self.__gcmt_depth = ui.eq_depth_range("focal mechanism")
@@ -449,19 +467,21 @@ class Layer(FileName, Coordinate, Projection):
 
 
 class MainMap(Layer):
-    ''' The parent class which create '''
+    """The parent class which create"""
+
     def __init__(self):
         Layer.__init__(self)
 
     def general_info(self):
-        """Printing basic map parameter"""
+        """Printing basic map parameter
+        Output location; File name; Projection, Map width and Coordinate"""
         if self.proj == "M":
             proj = "Mercators"
         elif self.proj == "G":
             proj = "Globe"
         general = f"""
 {"  MAP PARAMETER  ".center(80, "=")} 
-
+Output dir : {self.output_path}
 File name  : {self.name:<20} Coordinate :
 Projection : {proj:<24} West : {self.x1:<13} South : {self.y1}
 Map size   : {self.size} cm{19*" "} East : {self.x2:<13} North : {self.y2}
@@ -597,7 +617,7 @@ Map size   : {self.size} cm{19*" "} East : {self.x2:<13} North : {self.y2}
                 print((80 * "-"))
                 for l1, l2 in zip(dkeys, dvalues):
                     print(f"  {l1[3]:<10}: {l2[3]:<15} {l1[4]:<10}: {l2[4]:<15} ")
-        
+
             case 6:
                 dkeys = list(
                     zip_longest(
@@ -633,9 +653,18 @@ Map size   : {self.size} cm{19*" "} East : {self.x2:<13} North : {self.y2}
                 print(" ", (21 * " ").join(self.__columns[3:6]))
                 print((80 * "-"))
                 for l1, l2 in zip(dkeys, dvalues):
-                    print(f"  {l1[3]:<10}: {l2[3]:<15} {l1[4]:<10}: {l2[4]:<15} {l1[5]:<10}: {l2[5]:<15} ")
+                    print(
+                        f"  {l1[3]:<10}: {l2[3]:<15} {l1[4]:<10}: {l2[4]:<15} {l1[5]:<10}: {l2[5]:<15} "
+                    )
         print((80 * "="))
 
     def gmt_execute(self):
         os.chdir(os.getcwd() + "/output")
         os.system(f"{os.getcwd()}/{self.name}.bat")
+
+
+# def cobadir():
+#     print(os.path.abspath(__file__))
+#     parent = rf'{sys.path[0]}'
+
+#     print(rf"lokasi = {parent}")

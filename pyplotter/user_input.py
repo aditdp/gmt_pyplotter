@@ -12,12 +12,10 @@ def separator(func):
     return wrapper
 
 
-def file_name():
+def file_name(output_dir):
     while True:
         input_file_name = input("Name of the map: ")
-        path = os.path.join(
-            os.getcwd(), "gmt_pyplotter", "output", input_file_name, ".png"
-        )
+        path = os.path.join(output_dir, f"{input_file_name}.png")
         check_file = os.path.isfile(path)
 
         if check_file == True:
@@ -85,13 +83,13 @@ def input_size():
 
 
 def color_land():
-    print("leave empty for default color")
+    print("leave empty for default color (seagreen2)")
     colr_land = str(input("Choose the color of the land :") or "seagreen2")
     return colr_land
 
 
 def color_sea():
-    print("leave empty for default color")
+    print("leave empty for default color (lightcyan)")
     colr_sea = str(input("Choose the color of the sea : ") or "lightcyan")
     return colr_sea
 
@@ -271,7 +269,7 @@ def grdimage_resolution():
     while True:
         print("Choose the image resolution")
         print(
-            """SRTMGL1 (need internet connection)
+            """SRTMGL1 (internet connection needed)
             1. Full   (01 second)
             2. High   (15 second)
             3. Medium (01 minute)
@@ -337,23 +335,34 @@ def date_start(*args):
     while True:
         print(80 * ".")
         input_date_start = input(
-            (f"Enter start date for the {req_type} (YYYYMMDD):   ").strip()
+            (
+                f"Enter start date for the {req_type} \n(YYYYMMDD) for full date or\n(YYYY) for year only (1 Jan) :   "
+            ).strip()
             or "20190101"
         )
         if not re.match("^[0-9]*$", input_date_start):
             print("error, input numbers only!")
             continue
-        elif len(input_date_start) != 8:
-            print("error, input eight characters!")
+        elif len(input_date_start) != 8 or len(input_date_start) != 4:
+            print("error, input 4 or 8 characters for the year or date !")
         else:
-            year_start = int(input_date_start[0:4])
-            mo_start = int(input_date_start[4:6])
-            day_start = int(input_date_start[6:])
+            if len(input_date_start) == 4:
+                year_start = int(input_date_start)
+                mo_start = 1
+                day_start = 1
+            elif len(input_date_start) == 8:
+                year_start = int(input_date_start[0:4])
+                mo_start = int(input_date_start[4:6])
+                day_start = int(input_date_start[6:])
             try:
                 input_date_start = date(year_start, mo_start, day_start)
-                print("start date : ", input_date_start.strftime("%B %d, %Y"))
+                if date.today() - input_date_start < 0:
+                    print("start date cannot from future")
+                    continue
+                else:
+                    print("start date : ", input_date_start.strftime("%B %d, %Y"))
+                    break
 
-                break
             except ValueError as error:
                 print(f"error, {error}!")
                 continue
@@ -366,17 +375,25 @@ def date_end(*args):
     while True:
         print(80 * ".")
         input_date_end = input(
-            (f"Enter end date for the {req_type} (YYYYMMDD):  ").strip() or "20240101"
+            (
+                f"Enter end date for the {req_type} \n(YYYYMMDD) for full date or\n(YYYY) for year only (31 Dec) :  "
+            ).strip()
+            or "20240101"
         )
         if not re.match("^[0-9]*$", input_date_end):
             print("error, input numbers only!")
             continue
-        elif len(input_date_end) != 8:
-            print("error, input eight characters!")
+        elif len(input_date_end) != 4 or len(input_date_end) != 8:
+            print("error, input 4 or 8 characters for the year or date !")
         else:
-            year_end = int(input_date_end[0:4])
-            mo_end = int(input_date_end[4:6])
-            day_end = int(input_date_end[6:])
+            if len(input_date_end) == 4:
+                year_end = int(input_date_end)
+                mo_end = 12
+                day_end = 31
+            elif len(input_date_end) == 8:
+                year_end = int(input_date_end[0:4])
+                mo_end = int(input_date_end[4:6])
+                day_end = int(input_date_end[6:])
             try:
                 input_date_end = date(year_end, mo_end, day_end)
                 print("end date : ", input_date_end.strftime("%B %d, %Y"))
@@ -558,6 +575,7 @@ def eq_catalog_source():
         print("Choose the earthquake catalog service: ")
         print("  1. USGS - NEIC PDE")
         print("  2. ISC Bulletin")
+        print("  3. User supplied")
         # print("  3. GlobalCMT")
         eq_cata = input("Earthquake catalog:  ")
         match eq_cata:
@@ -575,6 +593,10 @@ def eq_catalog_source():
                 print(
                     "using earthquake catalog from International Seismology Centre Bulletin"
                 )
+                break
+            case "3" | "3." | "User supplied" | "gcmt" | "GlobalCMT":
+                eq_cata = "From user"
+                print("using earthquake catalog from Blobal Centroid Moment Tensor")
                 break
             # case "3" | "3." | "GCMT" | "gcmt" | "GlobalCMT":
             #     eq_cata = "GlobalCMT"
@@ -621,17 +643,111 @@ def eq_legend():
 #     return user_map_type
 
 
+from tkinter.filedialog import askopenfilename, askdirectory
+
+
+def save_loc():
+    print("Select the output directory ..")
+    while True:
+        output_path = askdirectory(
+            initialdir=os.getcwd(),
+            mustexist=True,
+            title="Select the output directory",
+        )
+        if output_path:
+            break
+        else:
+            continue
+    print(f"Output directory : {output_path}")
+    return output_path
+
+
 def load_eq():
+    print("Loading the earthquake data from user")
+
+    eq_path = askopenfilename(
+        initialdir=os.getcwd(),
+        filetypes=(
+            ("txt files..    ", "*.txt"),
+            ("csv files..   ", "*.csv"),
+            ("dat files..   ", "*.dat"),
+            ("all types..   ", "*"),
+        ),
+        title="Open earthquake data location",
+    )
+
+    print(f"Earthquake data : {eq_path}")
+    return eq_path
+
+
+def column_order(eq_path):
+
     # file name, longitude, lattitude, magnitude, depth
-    print("Place the earthquake info in data directory before proceed..")
-    print("column order separate with space and the first column start from 1")
-    print("for example: 1 2 3 4")
-    print("|longitude|--|lattitude|--|magnitude|--|depth|")
-    eq_column_order = list(map(input("the column order:  ").strip().split))[:4]
-    eq_column_lon = eq_column_order[0]
-    eq_column_lat = eq_column_order[1]
-    eq_column_dep = eq_column_order[2]
-    eq_column_mag = eq_column_order[3]
-    print("Load the earthquake data from user")
-    eq_user_fname = input("\nfile name:  ")
-    path = os.path.join(os.getcwd(), "gmt_pyplotter", "data", ".png")
+    while True:
+        print("column order separate with space and the first column start from 1")
+        print("data required : longitude, lattitude, depth, magnitude")
+        # print("6 column if date and time in different column, or 5 if combined")
+        print("for example: 1 2 3 4 ")
+        print("|longitude|--|lattitude|--|depth|--|magnitude|--|Date-Time|")
+        eq_column_order = list(map(input("the column order:  ").strip().split))[:4]
+        eq_column_lon = eq_column_order[0]
+        eq_column_lat = eq_column_order[1]
+        eq_column_dep = eq_column_order[2]
+        eq_column_mag = eq_column_order[3]
+        col_check = eq_column_check(eq_path, eq_column_order)
+        if col_check[0] == "good":
+            break
+        else:
+            print("the column order error")
+            continue
+
+    return eq_column_lon, eq_column_lat, eq_column_dep, eq_column_mag, col_check
+
+
+def eq_column_check(eq_path, column_order):
+    print(eq_path, column_order)
+    with open(eq_path) as f:
+        for columns in f:
+            lon = columns[{column_order[0]}]
+            if lon < -180 or lon > 180:
+                print(
+                    "error: longitude value should between -180 and 180 degree. \nCheck the column order"
+                )
+                status = "bad"
+                break
+
+            lat = columns[{column_order[1]}]
+            if lat < -90 or lat > 90:
+                print(
+                    "error: lattitude value should between -90 and 90 degree. \nCheck the column order"
+                )
+                status = "bad"
+                break
+            eq_data_dep = []
+            depth = columns[{column_order[2]}]
+            if depth < 0 or depth > 1000:
+                print(
+                    "error: depth value should between 0 and 1000 km. \nCheck the column order"
+                )
+                status = "bad"
+                break
+            else:
+                eq_data_dep.append(depth)
+            eq_data_mag = []
+            mag = columns[{column_order[3]}]
+            if mag < 0 or mag > 10:
+                print(
+                    "error: magnitude value should between 0 - 10. \nCheck the column order"
+                )
+                status = "bad"
+                break
+            else:
+                eq_data_mag.append(mag)
+                status = "good"
+    return (
+        status,
+        min(eq_data_dep),
+        max(eq_data_dep),
+        min(eq_data_mag),
+        max(eq_data_mag),
+    )

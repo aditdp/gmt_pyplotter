@@ -1,6 +1,7 @@
 import os, subprocess, time
 from urllib.request import urlretrieve, urlopen
 
+"""rencana: buat penentuan lokasi output gambar dan data di awal script"""
 
 # import user_input as ui
 
@@ -15,7 +16,7 @@ def header():
     print("")
     print(80 * "=")
     print("")
-    
+
     # print(
     #     """there is 4 stage for creating map
     #       1. Main map coordinate
@@ -39,9 +40,7 @@ def file_writer(*args):
     layer = args[2]
     print(layer)
 
-    with open(
-        os.path.join(os.getcwd(), "gmt_pyplotter", "output", script_name), flag
-    ) as file:
+    with open(os.path.join(sys.path[0], script_name), flag) as file:
         file.write(layer)
 
     # print(args)
@@ -162,94 +161,141 @@ def is_gmt_installed():
         case "nt":
             shelll = "False"
     gmt_location = shutil.which("gmt")
+
     if gmt_location:
+        if len(gmt_location) > 23:
+            gmt_location = f"...{gmt_location[-20:]}"
         getVersion = subprocess.Popen(
             "gmt --version", shell=shelll, stdout=subprocess.PIPE
         ).stdout
         gmt_ver = getVersion.read()
         ver_number = gmt_ver.decode().rstrip()
-        
+
         if float(ver_number[0:3]) >= 6.2:
-            logo_brin(f"GMT is installed at : {gmt_location}",f"GMT version {ver_number}"," ")
-            
+            pr1 = f"Generic Mapping Tools in this system:"
+            pr2 = f"   Location : \033[48;5;46m{gmt_location}\033[0;0m"
+            pr3 = f"   Version  : \033[48;5;46m{ver_number}\033[0;0m"
+            pr4 = f"GMT version supported"
+            logo_brin(pr1, pr2, pr3, pr4, "", "")
+
             # print("\nloading..")
-            time.sleep(0)
-            loading_bar(0,100)
+            time.sleep(1)
+            loading_bar(0, 100)
         else:
-            logo_brin("Please install GMT version 6.2.0 or latter..","https://docs.generic-mapping-tools.org/latest/install.html","")
-                    
-            input("Press any key to abort ..")
-            sys.exit(" Upgrade the GMT version to 6.2.0 or latter ..")
+            pr1 = f"Generic Mapping Tools in this system:"
+            pr2 = f"    Location : \033[48;5;46m{gmt_location}\033[0;0m"
+            pr3 = f"    Version  : \033[48;5;196m{ver_number}\033[0;0m"
+            pr4 = f"GMT version not supported"
+            pr5 = f"Update GMT version.."
+            pr6 = f"Press any key to quit ..."
+            logo_brin(pr1, pr2, pr3, pr4, pr5, pr6)
+
+            input()
+            print("")
+            print(" End of the program ".center(80, "="))
+            sys.exit(
+                f" \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires GMT version to 6.2.0 or latter to operate\n      Please update the GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
+            )
 
     else:
-        logo_brin()
-        print(
-            "Generic Mapping Tools is required, please download and install GMT version 6.2.0 or latter.."
+        pr1 = f"Generic Mapping Tools in this system:"
+        pr2 = f"Location : \033[48;5;196m not found \033[0;0m"
+        pr3 = f"Version  : \033[48;5;196m - \033[0;0m"
+        pr4 = f"Generic Mapping Tools not found"
+        pr5 = f"Please install the GMT program!"
+        pr6 = f"Press any key to quit ..."
+        logo_brin(pr1, pr2, pr3, pr4, pr5, pr6)
+        input()
+        print("")
+        print(" End of the program ".center(80, "="))
+        sys.exit(
+            f" \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires Generic Mapping Tools to operate\n       Please install GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
         )
-        print("https://docs.generic-mapping-tools.org/latest/install.html")
-        input("Press any key to abort ..")
-        sys.exit("GMT is not installed")
+
 
 def logo_brin(*args):
     pr1 = args[0]
     pr2 = args[1]
     pr3 = args[2]
-    print(f'''\033[91m
-                 ↑↑↑↑↑↑↑↑↑↑↑↑             
-                  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑       
-       ↑↑↑↑↑↑      ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑        \033[00m {pr1} \033[91m
-     ↑↑↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑↑↑ ↑↑↑↑↑↑      \033[00m {pr2} \033[91m
-    ↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑    \033[00m {pr3} \033[91m
-   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑        ↑↑↑↑↑   
-   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑   ↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑  
+    pr4 = args[3]
+    pr5 = args[4]
+    pr6 = args[5]
+    print(
+        f"""\033[38;5;196m
+                 ↑↑↑↑↑↑↑↑↑↑↑↑             \033[00m  {pr1} \033[38;5;196m
+                  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑          \033[00m  {pr2} \033[38;5;196m
+       ↑↑↑↑↑↑      ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑        \033[00m  {pr3} \033[38;5;196m
+     ↑↑↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑↑↑ ↑↑↑↑↑↑      
+    ↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑    
+   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑        ↑↑↑↑↑   \033[00m  {pr4} \033[38;5;196m
+   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑   ↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑  \033[00m  {pr5} \033[38;5;196m
    ↑↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑  
     ↑↑↑↑↑↑↑↑↑↑↑↑      ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ 
-      ↑↑↑↑↑↑↑↑↑        ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ 
+      ↑↑↑↑↑↑↑↑↑        ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ \033[00m  {pr6} \033[38;5;196m
                                           
  ↑↑                   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ 
  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  
  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  
   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑   
    ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑    
-    ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑     \033[00m _____________________________________\033[91m
-      ↑↑↑↑↑↑↑   ↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑      \033[00m  © BRIN \033[91m     
-        ↑↑↑↑↑↑↑↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑        \033[00m  Badan Riset dan Inovasi Nasional\033[91m 
-          ↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑          \033[00m \x1B[3m National Research and Innovation \033[91m 
-                ↑↑↑↑↑↑↑↑↑↑↑↑              \033[00m \x1B[3m Agency of Indonesia  ''') 
+    ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑     \033[00m  ___________________________________\033[38;5;196m
+      ↑↑↑↑↑↑↑   ↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑      \033[00m  © BRIN \033[38;5;196m   
+        ↑↑↑↑↑↑↑↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑        \033[00m  Badan Riset dan Inovasi Nasional\033[38;5;196m
+          ↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑          \033[00m \x1B[3m National Research and Innovation \033[38;5;196m
+                ↑↑↑↑↑↑↑↑↑↑↑↑              \033[00m \x1B[3m Agency of Indonesia \033[00m """
+    )
+
 
 def loading_bar(begin, end):
-    print(f'\n')
+    print(f"\n")
     for x in range(begin, end + 1):
         percent = 73 * (x / end)
         bar = "█" * int(percent) + "-" * (73 - int(percent))
         print(f"\r|{bar}| {100*x/end:.0f}%", end="\r")
         x + 1
-        time.sleep(0.02)
-        
-def finalization_bar():
-    loading_bar
-    print()
-    
-    #  ↑↑↑↑↑↑↑      ↑↑↑↑↑↑     ↑    ↑↑     ↑ 
-#  ↑     ↑↑     ↑     ↑    ↑    ↑ ↑↑   ↑ 
-#  ↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑    ↑    ↑   ↑↑ ↑ 
-#  ↑     ↑↑     ↑     ↑    ↑    ↑     ↑↑ 
-#  ↑↑↑↑↑↑↑      ↑     ↑    ↑    ↑      ↑             
-# 
+        time.sleep(0.01)
+
+
+def finalization_bar(stage):
+    stage1 = "writing the script    [....]"
+    stage2 = "plotting the figure   [....]"
+    stage1dn = "writing the script    [done]"
+    stage2dn = "plotting the figure   [done]"
+    match stage:
+        case 0:
+            print(stage1)
+            print(stage2)
+            loading_bar(0, 30)
+        case 1:
+            print(stage1dn)
+            print(stage2)
+            loading_bar(30, 100)
+        case 2:
+            print(stage1dn)
+            print(stage2dn)
+            loading_bar(100, 100)
+
+
+#  ↑↑↑↑↑↑↑      ↑↑↑↑↑↑     ↑    ↑↑     ↑
+#  ↑     ↑↑     ↑     ↑    ↑    ↑ ↑↑   ↑
+#  ↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑    ↑    ↑   ↑↑ ↑
+#  ↑     ↑↑     ↑     ↑    ↑    ↑     ↑↑
+#  ↑↑↑↑↑↑↑      ↑     ↑    ↑    ↑      ↑
+#
 #   ██████████   ██████████    ███   █████    ███
-#   ███     ███  ███     ███   ███   ██████   ███ 
-#   ███     ███  ███     ███   ███   ███ ███  ███ 
-#   ██████████   ██████████    ███   ███  ███ ███ 
-#   ███     ███  ███     ███   ███   ███   ██████ 
-#   ███     ███  ███     ███   ███   ███    █████ 
+#   ███     ███  ███     ███   ███   ██████   ███
+#   ███     ███  ███     ███   ███   ███ ███  ███
+#   ██████████   ██████████    ███   ███  ███ ███
+#   ███     ███  ███     ███   ███   ███   ██████
+#   ███     ███  ███     ███   ███   ███    █████
 #   ██████████   ███     ███   ███   ███     ████
-#   
+#
 # ______   ______ _____ __   _
 # |_____] |_____/   |   | \  |
 # |_____] |    \_ __|__ |  \_|
-# 
-# 
-#  __   __        
+#
+#
+#  __   __
 # |__) |__) | |\ |
 # |__) |  \ | | \|
-# 
+#
