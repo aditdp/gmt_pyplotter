@@ -80,4 +80,4 @@ pip install .
 
 ## License
 
-Copyright (c) 2024 by ***BRIN* **(*Badan Riset dan Inovasi Nasional* / National Research and Innovation Agency of Indonesia)
+Copyright (c) 2024 by *BRIN* (*Badan Riset dan Inovasi Nasional* / National Research and Innovation Agency of Indonesia)
