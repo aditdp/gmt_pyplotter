@@ -154,7 +154,32 @@ def gmt_execute(name):
 import shutil, sys
 
 
-def is_gmt_installed():
+def is_gmt_gawk_installed():
+    def info(status: int, apps: str, apps_long: str, version=""):
+        match status:
+            case 1:  # Apps installed, version match
+                pr1 = f"{apps_long} in this system:"
+                pr2 = f"   Location : \033[48;5;46m{shutil.which(apps)}\033[0;0m"
+                pr3 = f"   Version  : \033[48;5;46m{version}\033[0;0m"
+                pr4 = f"{apps.upper()} version supported"
+                return [pr1, pr2, pr3, pr4, "", ""]
+            case 2:  # Apps installed, version not match
+                pr1 = f"{apps_long} in this system:"
+                pr2 = f"    Location : \033[48;5;46m{shutil.which(apps)}\033[0;0m"
+                pr3 = f"    Version  : \033[48;5;196m{version}\033[0;0m"
+                pr4 = f"{apps.upper()} version not supported"
+                pr5 = f"Update {apps.upper()} version.."
+                pr6 = f"Press any key to quit ..."
+                return [pr1, pr2, pr3, pr4, pr5, pr6]
+            case 3:  # Apps not installed
+                pr1 = f"{apps_long} in this system:"
+                pr2 = f"Location : \033[48;5;196m not found \033[0;0m"
+                pr3 = f"Version  : \033[48;5;196m - \033[0;0m"
+                pr4 = f"{apps_long} not found"
+                pr5 = f"Please install the {apps.upper()} program!"
+                pr6 = f"Press any key to quit ..."
+                return [pr1, pr2, pr3, pr4, pr5, pr6]
+
     """Check whether program_name is installed."""
     match os.name:
         case "posix":
@@ -162,34 +187,51 @@ def is_gmt_installed():
         case "nt":
             shelll = "False"
     gmt_location = shutil.which("gmt")
-
+    gawk_location = shutil.which("gawk")
+    if gawk_location:
+        getgawkVersion = subprocess.Popen(
+            "gawk -V", shell=shelll, stdout=subprocess.PIPE
+        ).stdout
+        gawk_ver = getgawkVersion.read()
+        gawk_ver = gawk_ver[8:13]
+        info_stat = info(1, "gawk", "GNU AWK", gawk_ver)
+        logo_brin(info_stat)
+        time.sleep(5)
+    else:
+        info_stat = info(3, "gawk", "GNU AWK")
+        logo_brin(info_stat)
+        instal_gawk = input("Do you want to install 'gawk' now (y/n)?  ")
+        match instal_gawk:
+            case "y" | "yes" | "Y" | "Yes" | "YES":
+                gawk_installer_path = os.path.join(
+                    os.path.abspath(__file__), "data", "gawk-3.1.6-1-setup.exe"
+                )
+                subprocess.run(f"cd {gawk_installer_path}")
+                print("")
+                print(" End of the program ".center(80, "="))
+        sys.exit("\nRestart the terminal before run 'gmt_pyplotter' again..")
     if gmt_location:
         if len(gmt_location) > 23:
             gmt_location = f"...{gmt_location[-20:]}"
-        getVersion = subprocess.Popen(
+        else:
+            pass
+        getgmtVersion = subprocess.Popen(
             "gmt --version", shell=shelll, stdout=subprocess.PIPE
         ).stdout
-        gmt_ver = getVersion.read()
-        ver_number = gmt_ver.decode().rstrip()
+        gmt_ver = getgmtVersion.read()
+        gmt_ver = gmt_ver.decode().rstrip()
 
-        if float(ver_number[0:3]) >= 6.2:
-            pr1 = f"Generic Mapping Tools in this system:"
-            pr2 = f"   Location : \033[48;5;46m{gmt_location}\033[0;0m"
-            pr3 = f"   Version  : \033[48;5;46m{ver_number}\033[0;0m"
-            pr4 = f"GMT version supported"
-            logo_brin(pr1, pr2, pr3, pr4, "", "")
+        if float(gmt_ver[0:3]) >= 6.2:
+            info_stat = info(1, "gmt", "Generic Mapping Tools", gmt_ver)
+            logo_brin(info_stat)
 
             # print("\nloading..")
             time.sleep(1)
+            input()
             loading_bar(0, 100)
         else:
-            pr1 = f"Generic Mapping Tools in this system:"
-            pr2 = f"    Location : \033[48;5;46m{gmt_location}\033[0;0m"
-            pr3 = f"    Version  : \033[48;5;196m{ver_number}\033[0;0m"
-            pr4 = f"GMT version not supported"
-            pr5 = f"Update GMT version.."
-            pr6 = f"Press any key to quit ..."
-            logo_brin(pr1, pr2, pr3, pr4, pr5, pr6)
+            info_stat = info(2, "gmt", "Generic Mapping Tools", gmt_ver)
+            logo_brin(info_stat)
 
             input()
             print("")
@@ -199,13 +241,8 @@ def is_gmt_installed():
             )
 
     else:
-        pr1 = f"Generic Mapping Tools in this system:"
-        pr2 = f"Location : \033[48;5;196m not found \033[0;0m"
-        pr3 = f"Version  : \033[48;5;196m - \033[0;0m"
-        pr4 = f"Generic Mapping Tools not found"
-        pr5 = f"Please install the GMT program!"
-        pr6 = f"Press any key to quit ..."
-        logo_brin(pr1, pr2, pr3, pr4, pr5, pr6)
+        info_stat = info(3, "gmt", "Generic Mapping Tools")
+        logo_brin(info_stat)
         input()
         print("")
         print(" End of the program ".center(80, "="))
@@ -214,15 +251,17 @@ def is_gmt_installed():
         )
 
 
-def logo_brin(*args):
+def logo_brin(args):
     pr1 = args[0]
     pr2 = args[1]
     pr3 = args[2]
     pr4 = args[3]
     pr5 = args[4]
     pr6 = args[5]
+    screen_clear()
+    header()
     print(
-        f"""\033[38;5;196m
+        f""" \033[38;5;196m
                  ↑↑↑↑↑↑↑↑↑↑↑↑             \033[00m  {pr1} \033[38;5;196m
                   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑          \033[00m  {pr2} \033[38;5;196m
        ↑↑↑↑↑↑      ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑        \033[00m  {pr3} \033[38;5;196m

@@ -1,5 +1,5 @@
-from . import user_input as ui
-from . import utils
+import user_input as ui
+import utils
 import os, copy, sys
 from itertools import zip_longest
 
@@ -212,6 +212,7 @@ class Layer(FileName, Coordinate, Projection):
         return self.base_script, self.__layer
 
     def layer_coast(self):
+        ui.color_rgb_chart()
         self.__colr_land = ui.color_land()
         self.__colr_sea = ui.color_sea()
         self.__layer = f"\tgmt coast -S{self.__colr_sea}  -EID+g{self.__colr_land} -Glightsteelblue2 -TdjTR+l,,,N+o0.5c \n"
@@ -467,7 +468,7 @@ class Layer(FileName, Coordinate, Projection):
 
 
 class MainMap(Layer):
-    """The parent class which create"""
+    """The child class which inherit from Layer class. Have method to display the map parameter information"""
 
     def __init__(self):
         Layer.__init__(self)

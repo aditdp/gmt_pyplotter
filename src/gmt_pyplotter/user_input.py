@@ -1,6 +1,7 @@
 import os.path, re
 from cmd import Cmd
 from datetime import date
+import utils
 
 
 def separator(func):
@@ -80,6 +81,17 @@ def input_size():
             continue
 
     return size
+
+
+def color_rgb_chart():
+    display_rgb_chart = input("Display the 'Color Palette Tables' from GMT (y/n) ?:  ")
+    match display_rgb_chart:
+        case "y" | "yes" | "Y" | "Yes" | "YES":
+            utils.pictureshow(
+                os.path.join(os.path.abspath(__file__), "data", "GMT_RGBchart.png")
+            )
+        case _:
+            pass
 
 
 def color_land():
@@ -184,7 +196,17 @@ def input_coord_y():
 
 
 def color_palette():
-    print("The 'Color Palette Tables' provided in 'example' folder.")
+    display_cpt = input("Display the 'Color Palette Tables' from GMT (y/n) ?:  ")
+    match display_cpt:
+        case "y" | "yes" | "Y" | "Yes" | "YES":
+            utils.pictureshow(
+                os.path.join(
+                    os.path.abspath(__file__), "data", "GMT_Color_Palette_Tables.png"
+                )
+            )
+        case _:
+            pass
+
     cpt_list = [
         "cubhelix",
         "dem1",

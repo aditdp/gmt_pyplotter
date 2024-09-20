@@ -1,12 +1,11 @@
-from . import map_class
-from . import utils
+import map_class
+import utils
 import os, sys
 
 
 try:
-    utils.screen_clear()
-    utils.header()
-    utils.is_gmt_installed()
+
+    utils.is_gmt_gawk_installed()
     utils.screen_clear()
     utils.header()
 
