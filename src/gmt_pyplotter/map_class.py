@@ -202,7 +202,7 @@ class Layer(FileName, Coordinate, Projection):
 
     @property
     def layer_base(self):
-        self.__layer = f"gmt begin {self.name} png \n\tgmt basemap {self.coord_script} {self.proj_script} -Ba -TdjTR+l,,,N+o0.5c \n"
+        self.__layer = f"gmt begin {self.name} png \n\tgmt basemap {self.coord_script} {self.proj_script} -Ba -TdjTR+l,,,N+o0.5c -Ve\n"
 
         self.base_script = {
             "projection": self.proj_script,
@@ -215,7 +215,7 @@ class Layer(FileName, Coordinate, Projection):
         ui.color_rgb_chart()
         self.__colr_land = ui.color_land()
         self.__colr_sea = ui.color_sea()
-        self.__layer = f"\tgmt coast -S{self.__colr_sea}  -EID+g{self.__colr_land} -Glightsteelblue2 -TdjTR+l,,,N+o0.5c \n"
+        self.__layer = f"\tgmt coast -S{self.__colr_sea}  -EID+g{self.__colr_land} -Glightsteelblue2 -TdjTR+l,,,N+o0.5c -Ve\n"
         self.coast = {
             "Type": "coast",
             "Land color": self.__colr_land,
@@ -231,7 +231,7 @@ class Layer(FileName, Coordinate, Projection):
         self.__resolution, res = ui.grdimage_resolution()
         self.__masking = ui.grdimage_mask()
         if self.__masking == "Yes":
-            self.__layer = f"\tgmt grdimage {self.__resolution} {self.__shading} -C{self.__cpt_color} \n\tgmt coast -Sazure"
+            self.__layer = f"\tgmt grdimage {self.__resolution} {self.__shading} -C{self.__cpt_color} -Ve\n\tgmt coast -Sazure -Ve\n"
         else:
             self.__layer = f"\tgmt grdimage {self.__resolution} {self.__shading} -C{self.__cpt_color} \n"
 
@@ -248,7 +248,7 @@ class Layer(FileName, Coordinate, Projection):
     def layer_contour(self):
         self.__contours_major = input("Major contours interval (meters):  ")
         self.__contours_minor = input("Minor contours interval (meters):  ")
-        self.__layer = f"\tgmt grdcontour @earth_relief_15s -A{self.__contours_major} -C{self.__contours_minor} -Wathin,gray50 -Wcfaint,gray90 -TdjTL+l,,,N \n"
+        self.__layer = f"\tgmt grdcontour @earth_relief_15s -A{self.__contours_major} -C{self.__contours_minor} -Wathin,gray50 -Wcfaint,gray90 -TdjTL+l,,,N -Ve\n"
 
         self.contour = {
             "Type": "contour",
@@ -264,7 +264,7 @@ class Layer(FileName, Coordinate, Projection):
         fault = os.path.join(
             os.path.pardir, "gmt_pyplotter", "data", "fault_sukamto2011"
         )
-        self.__layer = f"\tgmt  plot {fault} -W1p,black,solid -Sf+1i/0.2i+l+t\n"
+        self.__layer = f"\tgmt  plot {fault} -W1p,black,solid -Sf+1i/0.2i+l+t -Ve\n"
 
         self.indo_tecto = {"script": self.__layer}
         return self.indo_tecto
@@ -316,7 +316,7 @@ class Layer(FileName, Coordinate, Projection):
                 + self.__lonlatdepmag
                 + "}' "
                 + self.eq_file
-                + """| gmt plot -C -Scc -hi1 -Wfaint\n"""
+                + """| gmt plot -C -Scc -hi1 -Wfaint -Ve\n"""
             )
         elif os.name == "nt":
             self.__layer = (
@@ -325,7 +325,7 @@ class Layer(FileName, Coordinate, Projection):
                 + self.__lonlatdepmag
                 + '}" '
                 + self.eq_file
-                + """| gmt plot -C -Scc -hi1 -Wfaint\n"""
+                + """| gmt plot -C -Scc -hi1 -Wfaint -Ve\n"""
             )
         self.earthquake = {
             "Type": "earthquake",
@@ -346,7 +346,7 @@ class Layer(FileName, Coordinate, Projection):
         self.__gcmt_mag = ui.eq_mag_range("focal mechanism")
         self.__gcmt_depth = ui.eq_depth_range("focal mechanism")
         self.__scaler = float(self.map_size) * 0.02
-        self.__layer = "\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n\tgmt meca {} -Sd{}c+f0 -C -W0.1p,gray50\n".format(
+        self.__layer = "\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N -Ve\n\tgmt meca {} -Sd{}c+f0 -C -W0.1p,gray50 -Ve\n".format(
             self.fm_file,
             self.__scaler,
         )
@@ -416,9 +416,9 @@ class Layer(FileName, Coordinate, Projection):
         )
 
         self.__layer = """\tgmt inset begin -Dj{}+w{:.2f}c/{:.2f}+o{}c
-        gmt coast {} -JM{:.2f} -Slightcyan -Glightsteelblue2 -EID+gseagreen2 -Ba+e -BnEwS --FORMAT_GEO_MAP=ddd:mm --MAP_FRAME_TYPE=inside --FONT_ANNOT_PRIMARY=auto,Courier-Bold,grey40
-        gmt plot rect_{}.txt -Wthin,red {} -JM{:.2f}
-        gmt inset end\n\tgmt basemap -Tdj{}+l,,,N+o0.5c\n """.format(
+        gmt coast {} -JM{:.2f} -Slightcyan -Glightsteelblue2 -EID+gseagreen2 -Ba+e -BnEwS -Ve --FORMAT_GEO_MAP=ddd:mm --MAP_FRAME_TYPE=inside --FONT_ANNOT_PRIMARY=auto,Courier-Bold,grey40
+        gmt plot rect_{}.txt -Wthin,red {} -JM{:.2f} -Ve
+        gmt inset end\n\tgmt basemap -Tdj{}+l,,,N+o0.5c -Ve\n """.format(
             self.inset_just[0],
             self.inset_size,
             self.inset_size + (self.inset_size * 0.1),
