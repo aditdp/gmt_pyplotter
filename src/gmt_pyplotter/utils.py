@@ -1,8 +1,8 @@
-import os, subprocess, time
+import os, subprocess, time, cursor
+from datetime import datetime, timedelta
 from urllib.request import urlretrieve, urlopen
 from PIL import Image
 
-"""rencana: buat penentuan lokasi output gambar dan data di awal script"""
 
 # import user_input as ui
 
@@ -16,7 +16,6 @@ def header():
     print("interactive map ploting with Generic Mapping Tools".center(80, " "))
     print("")
     print(80 * "=")
-    print("")
 
     # print(
     #     """there is 4 stage for creating map
@@ -24,6 +23,54 @@ def header():
     #       2. Projection
     #       3. """
     # )
+
+
+def app_usage_log(*args):
+    log_path = os.path.join(os.path.dirname(__file__), "app_usage.log")
+    if os.path.isfile(log_path):
+
+        with open(log_path, "r") as original:
+            temp = original.read()
+            print(temp)
+        with open(log_path, "w") as new:
+
+            new.write(
+                f"""{datetime.now()}
+	File name  = {args[0]}.png
+	Location   = {args[1]}
+ 	Coordinate = {args[2]}
+	Layers     = {args[3]}
+{temp}"""
+            )
+    else:
+        with open(log_path, "w") as new:
+
+            new.write(
+                f"""{datetime.now()}
+	File name  = {args[0]}.png
+	Location   = {args[1]}
+ 	Coordinate = {args[2]}
+	Layers     = {args[3]}
+"""
+            )
+
+
+def system_check():
+    log_path = os.path.join(os.path.dirname(__file__), "app_usage.log")
+    try:
+        with open(log_path, "r") as file:
+            file.seek(0)
+            last_time = file.readline().strip()
+            print(last_time)
+            if last_time:
+
+                date_time_obj = datetime.strptime(last_time, "%Y-%m-%d %H:%M:%S.%f")
+                if datetime.now() > date_time_obj + timedelta(days=1):
+                    is_gawk_gmt_installed()
+                else:
+                    pass
+    except:
+        FileNotFoundError(is_gawk_gmt_installed())
 
 
 def screen_clear():
@@ -35,13 +82,61 @@ def screen_clear():
         os.system("cls")
 
 
+def check_terminal_size():
+    while True:
+        cursor.hide()
+        os.system("clear")
+        current_columns, current_lines = os.get_terminal_size()
+
+        if current_columns > 80 and current_lines > 30:
+            cursor.show()
+            break
+        elif current_columns < 80 and current_lines > 30:
+            for x in range(current_lines - 5):
+                print("")
+            print("\033[38;5;208m\033[3mgmt_pyplotter\033[00m")
+            print(current_columns * "-")
+            print(
+                f"Current terminal size: {current_columns} columns, {current_lines} rows"
+            )
+            print("resize the terminal width > 80 columns")
+            input("press \033[3m'Enter'\033[00m after resize the terminal window...")
+            cursor.show()
+            continue
+        elif current_columns > 80 and current_lines < 30:
+            for x in range(current_lines - 5):
+                print("")
+            print("\033[38;5;208m\033[3mgmt_pyplotter\033[00m")
+            print(current_columns * "-")
+            print(
+                f"Current terminal size: {current_columns} columns, {current_lines} rows"
+            )
+            print("resize the terminal height > 30 rows ")
+            input("press \033[3m'Enter'\033[00m after resize the terminal window...")
+            cursor.show()
+            continue
+        else:
+            for x in range(current_lines - 5):
+                print("")
+            print("\033[38;5;208m\033[3mgmt_pyplotter\033[00m")
+            print(current_columns * "-")
+            print(
+                f"Current terminal size: {current_columns} columns, {current_lines} rows"
+            )
+            print("resize the terminal width > 80 columns and height > 30 rows ")
+            input("press \033[3m'Enter'\033[00m after resize the terminal window...")
+            cursor.show()
+            continue
+
+
 def file_writer(*args):
     flag = args[0]
     script_name = args[1]
     layer = args[2]
+    output_dir = args[3]
     print(layer)
 
-    with open(os.path.join(sys.path[0], script_name), flag) as file:
+    with open(os.path.join(output_dir, script_name), flag) as file:
         file.write(layer)
 
     # print(args)
@@ -137,50 +232,107 @@ def isc_downloader(*args):
     print("done..")
 
 
-def gmt_execute(name):
-    loc = os.path.join(os.getcwd(), "gmt_pyplotter", "output")
+def gmt_execute(name, output_dir):
     match os.name:
         case "posix":
-            os.system(f"chmod +x {loc}/{name}.gmt")
-            print("make the script executable..")
-            os.chdir(loc)
+            os.system(f"chmod +x {output_dir}/{name}.gmt")
+            # print("make the script executable..")
+            os.chdir(output_dir)
             os.system(f"./{name}.gmt")
 
         case "nt":
-            os.chdir(loc)
+            os.chdir(output_dir)
             os.system(f"{name}.bat")
 
 
 import shutil, sys
 
 
-def is_gmt_gawk_installed():
-    def info(status: int, apps: str, apps_long: str, version=""):
-        match status:
-            case 1:  # Apps installed, version match
-                pr1 = f"{apps_long} in this system:"
-                pr2 = f"   Location : \033[48;5;46m{shutil.which(apps)}\033[0;0m"
-                pr3 = f"   Version  : \033[48;5;46m{version}\033[0;0m"
-                pr4 = f"{apps.upper()} version supported"
-                return [pr1, pr2, pr3, pr4, "", ""]
-            case 2:  # Apps installed, version not match
-                pr1 = f"{apps_long} in this system:"
-                pr2 = f"    Location : \033[48;5;46m{shutil.which(apps)}\033[0;0m"
-                pr3 = f"    Version  : \033[48;5;196m{version}\033[0;0m"
-                pr4 = f"{apps.upper()} version not supported"
-                pr5 = f"Update {apps.upper()} version.."
-                pr6 = f"Press any key to quit ..."
-                return [pr1, pr2, pr3, pr4, pr5, pr6]
-            case 3:  # Apps not installed
-                pr1 = f"{apps_long} in this system:"
-                pr2 = f"Location : \033[48;5;196m not found \033[0;0m"
-                pr3 = f"Version  : \033[48;5;196m - \033[0;0m"
-                pr4 = f"{apps_long} not found"
-                pr5 = f"Please install the {apps.upper()} program!"
-                pr6 = f"Press any key to quit ..."
-                return [pr1, pr2, pr3, pr4, pr5, pr6]
+def loading_bar(iteration, total, bar_length=73):
+    progress = iteration / total
+    arrow = "█" * int(round(progress * bar_length))
+    spaces = "-" * (bar_length - len(arrow))
+    sys.stdout.write(f"\r|{arrow}{spaces}| {int(progress * 100)}%")
+    sys.stdout.flush()
 
-    """Check whether program_name is installed."""
+
+def info_display(args):
+    pr1 = args[0]
+    pr2 = args[1]
+    pr3 = args[2]
+    pr4 = args[3]
+    pr5 = args[4]
+    pr6 = args[5]
+    pr21 = args[6]
+    pr31 = args[7]
+    duration_total = 5
+    duration_blink = 0.1
+    end_time = time.time() + duration_total
+    begin_loading = args[8]
+    cursor.hide()
+
+    while time.time() < end_time:
+
+        print(f"\033[0;0H")
+        logo_brin(pr1, pr2, pr3, pr4, pr5, pr6)
+        loading_bar(begin_loading, 100)
+
+        time.sleep(duration_blink)
+
+        print(f"\033[0;0H")
+        logo_brin(pr1, pr21, pr31, pr4, pr5, pr6)
+        loading_bar(begin_loading, 100)
+        begin_loading += 2
+        time.sleep(duration_blink)
+    cursor.show()
+
+
+def info_generator(status: int, apps: str, apps_long: str, version=""):
+    # variable for coloring the print output
+    bg_reset = "\033[0;0m"
+    bg_green = "\033[48;5;46m\033[38;5;198m"
+    bg_yellow = "\033[48;5;226m\033[38;5;198m"
+    bg_red = "\033[48;5;196m"
+    if apps == "gawk":
+        process = 2
+        app_color = f"\033[38;5;208m"
+    else:
+        process = 52
+        app_color = f"\033[38;5;33m"
+
+    match status:
+        case 1:  # Apps installed, version match
+            bg_color1 = bg_green
+            bg_color2 = bg_green
+
+            pr4 = f"{app_color}{apps.upper()}{bg_reset} version supported"
+            pr5 = ""
+            pr6 = ""
+
+        case 2:  # Apps installed, version not match
+            bg_color1 = bg_yellow
+            bg_color2 = bg_red
+            pr4 = f"{app_color}{apps.upper()}{bg_reset} version not supported"
+            pr5 = f"Update {app_color}{apps.upper()}{bg_reset} version.."
+            pr6 = f"Press any key to quit ..."
+
+        case 3:  # Apps not installed
+            bg_color1 = bg_red
+            bg_color2 = bg_red
+            pr4 = f"{app_color}{apps_long} not found"
+            pr5 = f"Please install the {app_color}{apps.upper()}{bg_reset} program!"
+            pr6 = f"Press any key to quit ..."
+
+    pr1 = f"{app_color}{apps_long}{bg_reset} in this system:"
+    pr2 = f"   Location : {shutil.which(apps)}"
+    pr3 = f"   Version  : {version}"
+    pr21 = f"   Location : {bg_color1}{shutil.which(apps)}{bg_reset}"
+    pr31 = f"   Version  : {bg_color2}{version}{bg_reset}"
+    return [pr1, pr2, pr3, pr4, pr5, pr6, pr21, pr31, process]
+
+
+def is_gawk_gmt_installed():
+    """Check whether GAWK and GMT is installed in the system."""
     match os.name:
         case "posix":
             shelll = "True"
@@ -194,12 +346,13 @@ def is_gmt_gawk_installed():
         ).stdout
         gawk_ver = getgawkVersion.read()
         gawk_ver = gawk_ver[8:13]
-        info_stat = info(1, "gawk", "GNU AWK", gawk_ver)
-        logo_brin(info_stat)
-        time.sleep(5)
+        gawk_ver = gawk_ver.decode().rstrip()
+        info_stat = info_generator(1, "gawk", "GNU AWK", gawk_ver)
+        info_display(info_stat)
+        # time.sleep(1)
     else:
-        info_stat = info(3, "gawk", "GNU AWK")
-        logo_brin(info_stat)
+        info_stat = info_generator(3, "gawk", "GNU AWK")
+        info_display(info_stat)
         instal_gawk = input("Do you want to install 'gawk' now (y/n)?  ")
         match instal_gawk:
             case "y" | "yes" | "Y" | "Yes" | "YES":
@@ -222,16 +375,12 @@ def is_gmt_gawk_installed():
         gmt_ver = gmt_ver.decode().rstrip()
 
         if float(gmt_ver[0:3]) >= 6.2:
-            info_stat = info(1, "gmt", "Generic Mapping Tools", gmt_ver)
-            logo_brin(info_stat)
+            info_stat = info_generator(1, "gmt", "Generic Mapping Tools", gmt_ver)
+            info_display(info_stat)
 
-            # print("\nloading..")
-            time.sleep(1)
-            input()
-            loading_bar(0, 100)
         else:
-            info_stat = info(2, "gmt", "Generic Mapping Tools", gmt_ver)
-            logo_brin(info_stat)
+            info_stat = info_generator(2, "gmt", "Generic Mapping Tools", gmt_ver)
+            info_display(info_stat)
 
             input()
             print("")
@@ -241,8 +390,8 @@ def is_gmt_gawk_installed():
             )
 
     else:
-        info_stat = info(3, "gmt", "Generic Mapping Tools")
-        logo_brin(info_stat)
+        info_stat = info_generator(3, "gmt", "Generic Mapping Tools")
+        info_display(info_stat)
         input()
         print("")
         print(" End of the program ".center(80, "="))
@@ -251,14 +400,13 @@ def is_gmt_gawk_installed():
         )
 
 
-def logo_brin(args):
+def logo_brin(*args):
     pr1 = args[0]
     pr2 = args[1]
     pr3 = args[2]
     pr4 = args[3]
     pr5 = args[4]
     pr6 = args[5]
-    screen_clear()
     header()
     print(
         f""" \033[38;5;196m
@@ -282,18 +430,8 @@ def logo_brin(args):
       ↑↑↑↑↑↑↑   ↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑      \033[00m  © BRIN \033[38;5;196m   
         ↑↑↑↑↑↑↑↑   ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑        \033[00m  Badan Riset dan Inovasi Nasional\033[38;5;196m
           ↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑          \033[00m \x1B[3m National Research and Innovation \033[38;5;196m
-                ↑↑↑↑↑↑↑↑↑↑↑↑              \033[00m \x1B[3m Agency of Indonesia \033[00m """
+                ↑↑↑↑↑↑↑↑↑↑↑↑              \033[00m \x1B[3m Agency of Indonesia \033[00m \n"""
     )
-
-
-def loading_bar(begin, end):
-    print(f"\n")
-    for x in range(begin, end + 1):
-        percent = 73 * (x / end)
-        bar = "█" * int(percent) + "-" * (73 - int(percent))
-        print(f"\r|{bar}| {100*x/end:.0f}%", end="\r")
-        x + 1
-        time.sleep(0.01)
 
 
 def finalization_bar(stage):
@@ -314,31 +452,6 @@ def finalization_bar(stage):
             print(stage1dn)
             print(stage2dn)
             loading_bar(100, 100)
-
-
-#  ↑↑↑↑↑↑↑      ↑↑↑↑↑↑     ↑    ↑↑     ↑
-#  ↑     ↑↑     ↑     ↑    ↑    ↑ ↑↑   ↑
-#  ↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑    ↑    ↑   ↑↑ ↑
-#  ↑     ↑↑     ↑     ↑    ↑    ↑     ↑↑
-#  ↑↑↑↑↑↑↑      ↑     ↑    ↑    ↑      ↑
-#
-#   ██████████   ██████████    ███   █████    ███
-#   ███     ███  ███     ███   ███   ██████   ███
-#   ███     ███  ███     ███   ███   ███ ███  ███
-#   ██████████   ██████████    ███   ███  ███ ███
-#   ███     ███  ███     ███   ███   ███   ██████
-#   ███     ███  ███     ███   ███   ███    █████
-#   ██████████   ███     ███   ███   ███     ████
-#
-# ______   ______ _____ __   _
-# |_____] |_____/   |   | \  |
-# |_____] |    \_ __|__ |  \_|
-#
-#
-#  __   __
-# |__) |__) | |\ |
-# |__) |  \ | | \|
-#
 
 
 def pictureshow(path):

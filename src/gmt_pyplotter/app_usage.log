@@ -1,0 +1,5 @@
+2024-09-25 00:21:45.761681
+	File name  = loging_coba.png
+	Location   = /home/aditdp_/git/gmt_pyplotter/src/gmt_pyplotter
+ 	Coordinate = [114.0, 117.0, -9.0, -6.0]
+	Layers     = {'Layer 1': {'Type': 'coast', 'Land color': 'seagreen2', 'Sea color': 'lightcyan', 'script': '\tgmt coast -Slightcyan  -EID+gseagreen2 -Glightsteelblue2 -TdjTR+l,,,N+o0.5c \n'}, 'Layer 2': {'Type': 'contour', 'Interval': '100', 'Interval2': '25', 'script': '\tgmt grdcontour @earth_relief_15s -A100 -C25 -Wathin,gray50 -Wcfaint,gray90 -TdjTL+l,,,N \n'}}

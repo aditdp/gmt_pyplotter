@@ -12,6 +12,7 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     package_data={"gmt_pyplotter": ["data/*.png", "data/fault_sukamto2011"]},
-    include_package_data=False,
+    install_requires=["cursor"],
+    include_package_data=True,
     entry_points={"console_scripts": ["gmt_pyplotter = gmt_pyplotter.__main__:main"]},
 )

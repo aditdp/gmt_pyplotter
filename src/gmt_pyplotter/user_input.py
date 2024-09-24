@@ -1,4 +1,4 @@
-import os.path, re
+import os.path, re, sys
 from cmd import Cmd
 from datetime import date
 import utils
@@ -88,7 +88,7 @@ def color_rgb_chart():
     match display_rgb_chart:
         case "y" | "yes" | "Y" | "Yes" | "YES":
             utils.pictureshow(
-                os.path.join(os.path.abspath(__file__), "data", "GMT_RGBchart.png")
+                os.path.join(os.path.dirname(__file__), "data", "GMT_RGBchart.png")
             )
         case _:
             pass
@@ -201,7 +201,7 @@ def color_palette():
         case "y" | "yes" | "Y" | "Yes" | "YES":
             utils.pictureshow(
                 os.path.join(
-                    os.path.abspath(__file__), "data", "GMT_Color_Palette_Tables.png"
+                    os.path.dirname(__file__), "data", "GMT_Color_Palette_Tables.png"
                 )
             )
         case _:
@@ -679,7 +679,10 @@ def save_loc():
         if output_path:
             break
         else:
-            continue
+            try:
+                sys.exit(130)
+            except SystemExit:
+                os._exit(130)
     print(f"Output directory : {output_path}")
     return output_path
 

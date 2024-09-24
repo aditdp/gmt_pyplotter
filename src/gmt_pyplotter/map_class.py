@@ -18,8 +18,8 @@ class FileName:
         return self.output_path
 
     @property
-    def fig_output_path(self):
-        return os.path.join(f"{self.output_path}{self.fname}.png")
+    def file_output_path(self):
+        return os.path.join(f"{self.output_path},{self.fname}.png")
 
     # @name.setter
     # def name(self, new_name):
@@ -411,7 +411,9 @@ class Layer(FileName, Coordinate, Projection):
         self.inset_just = ui.inset_loc()
         self.inset_offset = self.size * 0.01
         self.rectangle = f">\n{self.x1}\t{self.y1}\n{self.x1}\t{self.y2}\n>\n{self.x1}\t{self.y2}\n{self.x2}\t{self.y2}\n>\n{self.x2}\t{self.y2}\n{self.x2}\t{self.y1}\n>\n{self.x2}\t{self.y1}\n{self.x1}\t{self.y1}"
-        utils.file_writer("w", f"rect_{self.name}.txt", self.rectangle)
+        utils.file_writer(
+            "w", f"rect_{self.name}.txt", self.rectangle, self.dir_output_path
+        )
 
         self.__layer = """\tgmt inset begin -Dj{}+w{:.2f}c/{:.2f}+o{}c
         gmt coast {} -JM{:.2f} -Slightcyan -Glightsteelblue2 -EID+gseagreen2 -Ba+e -BnEwS --FORMAT_GEO_MAP=ddd:mm --MAP_FRAME_TYPE=inside --FONT_ANNOT_PRIMARY=auto,Courier-Bold,grey40
@@ -456,15 +458,16 @@ class Layer(FileName, Coordinate, Projection):
             case "nt":
                 script_name = f"{self.name}.bat"
         print(f"creating GMT script: {self.name}")
-        utils.file_writer("w", script_name, self.layer_base[1])
+        utils.file_writer("w", script_name, self.layer_base[1], self.dir_output_path)
 
         for layer in range(1, len(self.layers) + 1):
             utils.file_writer(
                 "a",
                 script_name,
                 (self.layers[f"Layer {layer}"]["script"]),
+                self.dir_output_path,
             )
-        utils.file_writer("a", script_name, "gmt end")
+        utils.file_writer("a", script_name, "gmt end", self.dir_output_path)
 
 
 class MainMap(Layer):
