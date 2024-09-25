@@ -33,4 +33,10 @@ except KeyboardInterrupt:
     except SystemExit:
         os._exit(130)
 
-# cek aplikasi dependency: gmt, gawk, awk
+# cek aplikasi dependency: gmt, gawk, awk : done
+# fix finalization bar                    : not yet
+# layer kontur tidak mau plot             : not yet
+# layer tektonik belum ada info           : not yet
+# eq legend                               : not yet
+# cek semua fungsi                        : not yet
+# color land sea focmec, error code not yet

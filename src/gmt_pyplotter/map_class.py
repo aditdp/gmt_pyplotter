@@ -485,10 +485,10 @@ class MainMap(Layer):
             proj = "Globe"
         general = f"""
 {"  MAP PARAMETER  ".center(80, "=")} 
-Output dir : {self.output_path}
-File name  : {self.name:<20} Coordinate :
-Projection : {proj:<24} West : {self.x1:<13} South : {self.y1}
-Map size   : {self.size} cm{19*" "} East : {self.x2:<13} North : {self.y2}
+ Output dir : {self.output_path}
+ File name  : {self.name:<20} Coordinate :
+ Projection : {proj:<24} West : {self.x1:<13} South : {self.y1}
+ Map size   : {self.size} cm{17*" "} East : {self.x2:<13} North : {self.y2}
 """
         print(general)
 

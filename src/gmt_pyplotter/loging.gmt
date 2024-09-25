@@ -1,5 +1,0 @@
-gmt begin loging png 
-	gmt basemap -R114.0/117.0/-9.0/-6.0 -JM20.0c -Ba -TdjTR+l,,,N+o0.5c 
-	gmt coast -Slightcyan  -EID+gseagreen2 -Glightsteelblue2 -TdjTR+l,,,N+o0.5c 
-	gmt grdcontour @earth_relief_15s -A100 -C25 -Wathin,gray50 -Wcfaint,gray90 -TdjTL+l,,,N 
-gmt end
