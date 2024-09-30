@@ -1,6 +1,7 @@
 import map_class
 import utils
 import os, sys
+import user_input as ui
 
 
 try:
@@ -13,30 +14,47 @@ try:
     utils.screen_clear()
     map_main.general_info()
     map_main.layer_info()
-    # print("\nContinue to write the gmt script.. \n(press any key to continue)")
-    utils.finalization_bar(0)
+
     map_main.layer_writer()
-    # print("\ncreating the map.. \n(press any key to continue)")
+
     utils.finalization_bar(1)
     utils.gmt_execute(map_main.name, map_main.dir_output_path)
     utils.finalization_bar(2)
-    print(f" {map_main.name}.png successfully created in output folder")
-    utils.app_usage_log(
-        map_main.name, map_main.dir_output_path, map_main.boundary, map_main.layers
+    print("\n\n")
+    ui.printc(
+        f"  {map_main.name}.{map_main.format} successfully created in output folder"
     )
+    print("\n")
+    utils.pictureshow(
+        os.path.join(
+            map_main.dir_output_path,
+            f"{map_main.name}.{map_main.format}",
+        )
+    )
+    utils.app_usage_log(
+        map_main.name,
+        map_main.format,
+        map_main.dir_output_path,
+        map_main.boundary,
+        map_main.layers,
+    )
+    utils.closing()
 except KeyboardInterrupt:
-    print("\n\nexiting the program..\n")
-
-    print(" End of the program ".center(80, "="))
+    ui.printe("\n\n    KeyboardInterrupt: Exiting the program..\n")
+    utils.closing()
     try:
         sys.exit(130)
     except SystemExit:
         os._exit(130)
 
-# cek aplikasi dependency: gmt, gawk, awk : done
-# fix finalization bar                    : not yet
-# layer kontur tidak mau plot             : not yet
-# layer tektonik belum ada info           : not yet
-# eq legend                               : not yet
-# cek semua fungsi                        : not yet
-# color land sea focmec, error code not yet
+# cek aplikasi dependency: gmt, gawk, awk   : done
+# fix finalization bar                      : done
+# layer kontur tidak mau plot               : done
+# layer tektonik belum ada info             : done
+# eq legend and colorbar                    : not yet
+# cek semua fungsi                          : not yet
+# color land sea focmec, error code         : done
+# output format ditambahkan                 : done
+# color_bar location                        : done
+# grdimage belom fix untuk download
+# pindahan utils download ke map class

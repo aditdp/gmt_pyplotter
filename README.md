@@ -6,9 +6,11 @@ Python scripts for plotting maps with generic mapping tools in interactive comma
 
 Generic Mapping Tools (GMT) is an open source collection of about 100 command-line tools for manipulating geographic and Cartesian data sets (including filtering, trend fitting, gridding, projecting, etc.) and producing high-quality illustrations ranging from simple x-y plots via contour maps to artificially illuminated surfaces, 3D perspective views and animations. The GMT supplements add another 50 more specialized and discipline-specific tools. This program can be running either as Command Line Interface (CLI) or as a script code.
 
-### Problems
+### Complication
 
+* not beginer friendly
 * steep learning curve with the GMT
+
 * Prone typing error when inputing commands or parameters
 * time consuming when creating the script (trial and error)
 
@@ -31,7 +33,6 @@ The MainMap class only contain method for printing general parameter and layers 
 The Layer class determine the order of the layers, layers name, layers gmt script and downloading required data base on the user requested.
 
 The general parameter class (FileName, Coordinate, Projection) filling the main information of the maps, self explanatory.
-
 
 ### Available layers
 
@@ -65,7 +66,7 @@ Then input the required parameter based on the map to be generate
 
 ## Requirements
 
-* Generic Mapping Tools version >= 6.2.0
+* Generic Mapping Tools version >= 6.4.0
 * Python version >= 3.10
 
 ## Installation

@@ -1,12 +1,14 @@
-import os, subprocess, time, cursor
+import os, shutil, sys, subprocess, time, cursor
 from datetime import datetime, timedelta
 from urllib.request import urlretrieve, urlopen
 from PIL import Image
 
 
-# import user_input as ui
-
-# from test_class import Coordinate as C_
+match os.name:
+    case "posix":
+        SHELL = "True"
+    case "nt":
+        SHELL = "False"
 
 
 def header():
@@ -17,12 +19,27 @@ def header():
     print("")
     print(80 * "=")
 
-    # print(
-    #     """there is 4 stage for creating map
-    #       1. Main map coordinate
-    #       2. Projection
-    #       3. """
-    # )
+
+def closing():
+    print(" End of the program ".center(80, "="))
+
+
+def is_connected():
+    cursor.hide()
+    print("  checking internet connection.")
+    time.sleep(0.25)
+    print("\033[2A")
+    print("  checking internet connection..")
+    time.sleep(0.25)
+    print("\033[2A")
+    print("  checking internet connection...")
+    time.sleep(0.25)
+    cursor.show()
+    try:
+        urlopen("http://www.google.com", timeout=5)
+        return True
+    except:
+        return False
 
 
 def app_usage_log(*args):
@@ -31,16 +48,16 @@ def app_usage_log(*args):
 
         with open(log_path, "r") as original:
             temp = original.read()
-            print(temp)
         with open(log_path, "w") as new:
 
             new.write(
                 f"""{datetime.now()}
-	File name  = {args[0]}.png
-	Location   = {args[1]}
- 	Coordinate = {args[2]}
-	Layers     = {args[3]}
-{temp}"""
+	File name  = {args[0]}.{args[1]}
+	Location   = {args[2]}
+ 	Coordinate = {args[3]}
+	Layers     = {args[4]}
+{temp}
+"""
             )
     else:
         with open(log_path, "w") as new:
@@ -139,18 +156,6 @@ def file_writer(*args):
     with open(os.path.join(output_dir, script_name), flag) as file:
         file.write(layer)
 
-    # print(args)
-    # if os.name == "posix" and kwargs["format"] is None:
-    #     with open("output/" + output + ".gmt", flag) as file:
-    #         file.write(layer)
-    # elif os.name == "nt" and kwargs["format"] is None:
-    #     with open("output/" + output + ".bat", flag) as file:
-    #         file.write(layer)
-
-    # elif kwargs["format"] is not None:
-    #     with open("output/" + output + kwargs["format"], flag) as file:
-    #         file.write(layer)
-
 
 def gcmt_downloader(*args):
     fm_file = args[0]
@@ -236,16 +241,27 @@ def gmt_execute(name, output_dir):
     match os.name:
         case "posix":
             os.system(f"chmod +x {output_dir}/{name}.gmt")
-            # print("make the script executable..")
             os.chdir(output_dir)
-            os.system(f"./{name}.gmt")
+            command = f"./{name}.gmt"
 
         case "nt":
             os.chdir(output_dir)
-            os.system(f"{name}.bat")
+            command = f"{name}.bat"
 
-
-import shutil, sys
+    msg_from_gmt = subprocess.run(command, shell=SHELL, capture_output=True, text=True)
+    if msg_from_gmt.stderr:
+        finalization_bar("fail")
+        print(
+            f"\033[38;5;196mError while runing GMT script:\033[00m\n{msg_from_gmt.stderr}\n"
+        )
+        print("GMT script failed to run..")
+        closing()
+        try:
+            sys.exit(130)
+        except SystemExit:
+            os._exit(130)
+    else:
+        pass
 
 
 def loading_bar(iteration, total, bar_length=73):
@@ -254,6 +270,90 @@ def loading_bar(iteration, total, bar_length=73):
     spaces = "-" * (bar_length - len(arrow))
     sys.stdout.write(f"\r|{arrow}{spaces}| {int(progress * 100)}%")
     sys.stdout.flush()
+
+
+def finalization_bar(stage):
+    cursor.hide()
+    stage1 = "\n    Writing the script    [..  ]"
+    stage11 = "\n    \033[38;5;228mWriting the script\033[00m    [  ..]"
+    stage2 = "    Generating the map    [..  ]\n"
+    stage22 = "\033[38;5;228m    Generating the map\033[00m    [  ..]\n"
+    stage1done = "\n    Writing the script    [\033[38;5;40mdone\033[00m]"
+    stage2done = "    Generating the map    [\033[38;5;40mdone\033[00m]\n"
+    stage2fail = "    Generating the map    [\033[38;5;196mfail\033[00m]\n"
+
+    match stage:
+        case 1:
+            print(stage1)
+            print(stage2)
+            end_time = time.time() + 2
+            beginloading = 0
+            while time.time() < end_time:
+                print(f"\033[5A")
+                print(stage1)
+                print(stage2)
+                loading_bar(beginloading, 99)
+                beginloading += 1.6
+                time.sleep(0.1)
+                print(f"\033[5A")
+                print(stage11)
+                print(stage2)
+                loading_bar(beginloading, 99)
+                beginloading += 1.6
+                time.sleep(0.1)
+            print(f"\033[5A")
+            print(stage1done)
+            print(stage2)
+            loading_bar(30, 99)
+            time.sleep(1)
+        case 2:
+            print("\033[5A")
+            print(stage1)
+            print(stage2)
+            end_time = time.time() + 2.4
+            beginloading = 30
+            while time.time() < end_time:
+                print(f"\033[5A")
+                print(stage1done)
+                print(stage2)
+                loading_bar(beginloading, 99)
+                beginloading += 3
+                time.sleep(0.1)
+                print(f"\033[5A")
+                print(stage1done)
+                print(stage22)
+                loading_bar(beginloading, 99)
+                beginloading += 3
+                time.sleep(0.1)
+            print(f"\033[5A")
+            print(stage1done)
+            print(stage2done)
+            loading_bar(99, 99)
+
+        case "fail":
+            print("\033[5A")
+            print(stage1)
+            print(stage2)
+            end_time = time.time() + 1.7
+            beginloading = 30
+            while time.time() < end_time:
+                print(f"\033[5A")
+                print(stage1done)
+                print(stage2)
+                loading_bar(beginloading, 99)
+                beginloading += 3
+                time.sleep(0.1)
+                print(f"\033[5A")
+                print(stage1done)
+                print(stage22)
+                loading_bar(beginloading, 99)
+                beginloading += 3
+                time.sleep(0.1)
+            print(f"\033[5A")
+            print(stage1done)
+            print(stage2fail)
+            loading_bar(81, 99)
+    cursor.show()
 
 
 def info_display(args):
@@ -333,16 +433,12 @@ def info_generator(status: int, apps: str, apps_long: str, version=""):
 
 def is_gawk_gmt_installed():
     """Check whether GAWK and GMT is installed in the system."""
-    match os.name:
-        case "posix":
-            shelll = "True"
-        case "nt":
-            shelll = "False"
+
     gmt_location = shutil.which("gmt")
     gawk_location = shutil.which("gawk")
     if gawk_location:
         getgawkVersion = subprocess.Popen(
-            "gawk -V", shell=shelll, stdout=subprocess.PIPE
+            "gawk -V", shell=SHELL, stdout=subprocess.PIPE
         ).stdout
         gawk_ver = getgawkVersion.read()
         gawk_ver = gawk_ver[8:13]
@@ -361,7 +457,7 @@ def is_gawk_gmt_installed():
                 )
                 subprocess.run(f"cd {gawk_installer_path}")
                 print("")
-                print(" End of the program ".center(80, "="))
+                closing()
         sys.exit("\nRestart the terminal before run 'gmt_pyplotter' again..")
     if gmt_location:
         if len(gmt_location) > 23:
@@ -369,12 +465,12 @@ def is_gawk_gmt_installed():
         else:
             pass
         getgmtVersion = subprocess.Popen(
-            "gmt --version", shell=shelll, stdout=subprocess.PIPE
+            "gmt --version", shell=SHELL, stdout=subprocess.PIPE
         ).stdout
         gmt_ver = getgmtVersion.read()
         gmt_ver = gmt_ver.decode().rstrip()
 
-        if float(gmt_ver[0:3]) >= 6.2:
+        if float(gmt_ver[0:3]) >= 6.4:
             info_stat = info_generator(1, "gmt", "Generic Mapping Tools", gmt_ver)
             info_display(info_stat)
 
@@ -384,9 +480,9 @@ def is_gawk_gmt_installed():
 
             input()
             print("")
-            print(" End of the program ".center(80, "="))
+            closing()
             sys.exit(
-                f" \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires GMT version to 6.2.0 or latter to operate\n      Please update the GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
+                f" \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires GMT version to 6.4.0 or latter to operate\n      Please update the GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
             )
 
     else:
@@ -394,7 +490,7 @@ def is_gawk_gmt_installed():
         info_display(info_stat)
         input()
         print("")
-        print(" End of the program ".center(80, "="))
+        closing()
         sys.exit(
             f" \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires Generic Mapping Tools to operate\n       Please install GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
         )
@@ -432,26 +528,6 @@ def logo_brin(*args):
           ↑↑↑↑↑↑  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑          \033[00m \x1B[3m National Research and Innovation \033[38;5;196m
                 ↑↑↑↑↑↑↑↑↑↑↑↑              \033[00m \x1B[3m Agency of Indonesia \033[00m \n"""
     )
-
-
-def finalization_bar(stage):
-    stage1 = "writing the script    [....]"
-    stage2 = "plotting the figure   [....]"
-    stage1dn = "writing the script    [done]"
-    stage2dn = "plotting the figure   [done]"
-    match stage:
-        case 0:
-            print(stage1)
-            print(stage2)
-            loading_bar(0, 30)
-        case 1:
-            print(stage1dn)
-            print(stage2)
-            loading_bar(30, 100)
-        case 2:
-            print(stage1dn)
-            print(stage2dn)
-            loading_bar(100, 100)
 
 
 def pictureshow(path):
