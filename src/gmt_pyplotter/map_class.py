@@ -1,8 +1,8 @@
-import user_input as ui
-from user_input import printc, printe
-import utils, cursor
-import os, copy, sys, subprocess
 from itertools import zip_longest
+from gmt_pyplotter import user_input as ui
+from gmt_pyplotter.user_input import printc, printe
+from gmt_pyplotter import utils
+import os, copy, subprocess, cursor
 
 
 class FileName:
@@ -383,7 +383,7 @@ class Layer(FileName, Coordinate, Projection):
 
     def layer_contour(self):
         self.__ctr_interval, self.__reso = ui.contour_interval(self.map_scale)
-        self.__layer = f"\tgmt grdcontour @earth_relief_{self.__reso} -A{self.__ctr_interval * 4}+ap+u\ m -{self.__ctr_interval} -Wathin,gray50 -Wcfaint,gray70 -LP -Ve\n"
+        self.__layer = f"\tgmt grdcontour @earth_relief_{self.__reso} -A{self.__ctr_interval * 4}+ap+u\ m -C{self.__ctr_interval} -Wathin,gray50 -Wcfaint,gray70 -LP -Ve\n"
         self.contour = {
             "Type": "contour",
             "Interval": self.__ctr_interval,
