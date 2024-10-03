@@ -1,5 +1,6 @@
-import os.path, re, sys, utils
-from data.color_list import unique_color, palette_name
+from gmt_pyplotter.data.color_list import unique_color, palette_name
+from gmt_pyplotter import utils
+import os.path, re, sys
 from cmd import Cmd
 from datetime import date
 from tkinter.filedialog import askopenfilename, askdirectory
@@ -25,6 +26,30 @@ def printc(conclusion_msg):
     print("")
 
 
+def add_gawk_path():
+    print("  Adding GnuWin32 program to 'PATH' environment variable.. ")
+    if os.path.isfile(r"C:\Program Files (x86)\GnuWin32\bin\gawk.exe"):
+        real_gawk_path = r"C:\Program Files (x86)\GnuWin32\bin"
+    else:
+        while True:
+            print("  Locate the installed GnuWin32 'bin' directory.. ")
+            gawk_path = askdirectory(
+                initialdir=os.getcwd(),
+                mustexist=True,
+                title="  Browse for 'GnuWin32/bin' folder.. ",
+            )
+            if os.path.isfile(os.path.join(gawk_path, "bin", "gawk.exe")):
+                real_gawk_path = os.path.join(gawk_path, "bin")
+                break
+            elif os.path.isfile(os.path.join(gawk_path, "gawk.exe")):
+                real_gawk_path = gawk_path
+                break
+            else:
+                printe(f"  '{gawk_path}' is not valid GnuWin32 folder")
+    printc(f"  gawk path = {real_gawk_path}")
+    return real_gawk_path.replace("/", "\\")
+
+
 def save_loc():
     print("\n  Select the output (figure, gmt script & another data) directory ..\n")
     while True:
@@ -46,6 +71,8 @@ def save_loc():
                         sys.exit(130)
                     except SystemExit:
                         os._exit(130)
+    if os.name == "nt":
+        output_path = output_path.replace("/", "\\")
     if len(output_path) < 59:
         printc(f"  Output directory : \033[3m{output_path}\033[0m")
     else:
@@ -351,8 +378,6 @@ def contour_interval(mapscale):
         case num if num >= 2777750:
             recom = 500
             resolution = "02m"
-    print(recom)
-    print(resolution)
 
     print("  Contour line is annotate every 4 interval")
     print(f"  For this map, interval recomendation = {recom} meter")

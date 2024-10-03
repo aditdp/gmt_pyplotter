@@ -102,7 +102,7 @@ def screen_clear():
 def check_terminal_size():
     while True:
         cursor.hide()
-        os.system("clear")
+        screen_clear()
         current_columns, current_lines = os.get_terminal_size()
 
         if current_columns > 80 and current_lines > 30:
@@ -433,12 +433,13 @@ def info_generator(status: int, apps: str, apps_long: str, version=""):
 
 def is_gawk_gmt_installed():
     """Check whether GAWK and GMT is installed in the system."""
+    from gmt_pyplotter.user_input import add_gawk_path
 
     gmt_location = shutil.which("gmt")
     gawk_location = shutil.which("gawk")
     if gawk_location:
         getgawkVersion = subprocess.Popen(
-            "gawk -V", shell=SHELL, stdout=subprocess.PIPE
+            "gawk --version", shell=SHELL, stdout=subprocess.PIPE
         ).stdout
         gawk_ver = getgawkVersion.read()
         gawk_ver = gawk_ver[8:13]
@@ -447,17 +448,38 @@ def is_gawk_gmt_installed():
         info_display(info_stat)
         # time.sleep(1)
     else:
-        info_stat = info_generator(3, "gawk", "GNU AWK")
-        info_display(info_stat)
-        instal_gawk = input("Do you want to install 'gawk' now (y/n)?  ")
-        match instal_gawk:
-            case "y" | "yes" | "Y" | "Yes" | "YES":
-                gawk_installer_path = os.path.join(
-                    os.path.abspath(__file__), "data", "gawk-3.1.6-1-setup.exe"
-                )
-                subprocess.run(f"cd {gawk_installer_path}")
-                print("")
-                closing()
+        gawk_default_path = r"C:\Program Files (x86)\GnuWin32\bin\gawk.exe"
+
+        if os.path.isfile(gawk_default_path):
+            print("  'gawk' is installed but not added to 'PATH' environment variable")
+            print("  Adding 'gawk' to 'PATH'...")
+            os.system(
+                r"""For /F "Skip=2Tokens=1-2*" %A In ('Reg Query HKCU\Environment /V PATH 2^>Nul') Do setx PATH "%C;C:\Program Files (x86)\GnuWin32\bin"""
+            )
+        else:
+            info_stat = info_generator(3, "gawk", "GNU AWK")
+            screen_clear()
+            info_display(info_stat)
+            instal_gawk = input(
+                "\n\n  Do you want to install 'gawk' (GnuWin32) now (y/n)?  "
+            )
+            match instal_gawk:
+                case "y" | "yes" | "Y" | "Yes" | "YES":
+                    gawk_installer_path = os.path.join(
+                        os.path.dirname(__file__), "data", "gawk-3.1.6-1-setup.exe"
+                    )
+
+                    subprocess.call(gawk_installer_path)
+                    print("")
+
+                    gawk_path = add_gawk_path()
+                    edit_path = (
+                        r"""For /F "Skip=2Tokens=1-2*" %A In ('Reg Query HKCU\Environment /V PATH 2^>Nul') Do setx PATH "%C;"""
+                        + gawk_path
+                    )
+                    os.system(edit_path)
+
+        closing()
         sys.exit("\nRestart the terminal before run 'gmt_pyplotter' again..")
     if gmt_location:
         if len(gmt_location) > 23:
@@ -469,7 +491,7 @@ def is_gawk_gmt_installed():
         ).stdout
         gmt_ver = getgmtVersion.read()
         gmt_ver = gmt_ver.decode().rstrip()
-
+        screen_clear()
         if float(gmt_ver[0:3]) >= 6.4:
             info_stat = info_generator(1, "gmt", "Generic Mapping Tools", gmt_ver)
             info_display(info_stat)
@@ -487,6 +509,7 @@ def is_gawk_gmt_installed():
 
     else:
         info_stat = info_generator(3, "gmt", "Generic Mapping Tools")
+        screen_clear()
         info_display(info_stat)
         input()
         print("")
