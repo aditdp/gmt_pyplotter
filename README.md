@@ -1,6 +1,4 @@
-# GMT_Pyplotter
-
-![1727945702977](image/README/1727945702977.png)
+# GMT_Pyplotter![1727945891061](image/README/1727945891061.png)
 
 ## What is GMT
 
