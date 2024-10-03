@@ -55,7 +55,7 @@ Then input the required parameter based on the map to be generate
 
 ## Requirements
 
-* gawk or gnuwin31
+* gawk or gnuwin32
 * Generic Mapping Tools version >= 6.4.0
 * Python version >= 3.10
 
