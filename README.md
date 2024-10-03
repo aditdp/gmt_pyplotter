@@ -1,6 +1,6 @@
 # GMT_Pyplotter
 
-Python scripts for plotting maps with generic mapping tools in interactive command line interface.
+![1727945702977](image/README/1727945702977.png)
 
 ## What is GMT
 
@@ -10,29 +10,30 @@ Generic Mapping Tools (GMT) is an open source collection of about 100 command-li
 
 * not beginer friendly
 * steep learning curve with the GMT
-
 * Prone typing error when inputing commands or parameters
 * time consuming when creating the script (trial and error)
 
 ## GMT_Pyplotter
 
-Just type the parameters
+Just type the parameters, the program will generate and download the requested data for you.
 
-Interactive command line interface
+Run interactively in command line interface with input validation, no need to worries to the error.
 
-working in windows, linux or macOS
+Working on Windows, Linux or macOS
 
-### Structure of the script
+If the output not as expected, re-run the gmt_pyplotter.
+
+### How it's work
 
 In the begining of the script, the GMT program is check for the installation location and the version match the required specification.
 
-The MainMap class is inherit Layer class in which also inherit from the basic parameter class (FileName, Coordinate, Projection)
+Follow the instruction for installing required application.
 
-The MainMap class only contain method for printing general parameter and layers information to the screen
-
-The Layer class determine the order of the layers, layers name, layers gmt script and downloading required data base on the user requested.
-
-The general parameter class (FileName, Coordinate, Projection) filling the main information of the maps, self explanatory.
+1. In the begining, select a directory for output (map and another additional data)
+2. Then select the output format (jpg, png, eps, pdf, etc..)
+3. Pick a name for the map
+4. input the general info such as map projection, map width, and coordinate.
+5. Select layers and then generate the map.
 
 ### Available layers
 
@@ -44,36 +45,27 @@ The general parameter class (FileName, Coordinate, Projection) filling the main 
 6. Indonesia regional tectonic plot
 7. Map inset
 
-### How it's work
-
-The
-
-Current feature
-
-Creating a geographical map with mercators projection
-
-Support up to 6 layers
-
 ### How to use
 
-In the terminal type the command:
+In the terminal or cmd/powershell type the command:
 
 ```python
-python gmt_pyplotter
+gmt_pyplotter
 ```
 
 Then input the required parameter based on the map to be generate
 
 ## Requirements
 
+* gawk or gnuwin31
 * Generic Mapping Tools version >= 6.4.0
 * Python version >= 3.10
 
 ## Installation
 
-Make sure the required apps already installed.
-
-Navigate to the downloaded installation folder with terminal and enter the following command:
+1. Make sure the required apps already installed or the apps will guide the required external programs
+2. Open terminal (linux or macOS) or cmd / powershell (Windows operating system)
+3. Change directory to the directory of  installer where there is setup.py exist,  and enter the following command:
 
 ```python
 pip install .
