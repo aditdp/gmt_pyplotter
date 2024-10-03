@@ -69,7 +69,7 @@ def save_loc():
                     try:
                         print(" End of the program ".center(80, "="))
                         sys.exit(130)
-                    except SystemExit:
+                    except SystemExit():
                         os._exit(130)
     if os.name == "nt":
         output_path = output_path.replace("/", "\\")
@@ -83,7 +83,7 @@ def save_loc():
 
 def file_out_format():
     print(
-        f"""  List supported image ouput format in GMT:
+        """  List supported image ouput format in GMT:
   1. |bmp| Microsoft Bit Map
   2. |eps| Encapsulated PostScript
   3. |jpg| Joint Photographic Experts Group Format
@@ -129,7 +129,7 @@ def file_out_format():
             case _:
                 print("\033[2A")
                 printe(f"    '{input_file_format}' is not a valid output format")
-                continue
+
     printc(f"  File output format = '{file_format}'")
     return file_format
 
@@ -156,6 +156,7 @@ def file_name(output_dir, file_format):
                     break
             except:
                 continue
+                raise
         else:
             printc(f"  Map will be save as {input_file_name}.{file_format}")
 
@@ -181,7 +182,7 @@ def input_projection():
             case _:
                 print("\033[2A")
                 printe("    Please choose between 'M' or 'G'")
-                continue
+
     return proj
 
 
@@ -226,94 +227,79 @@ def input_country_id():
         if not re.match("^[A-Z]*$", country_id):
             print("\033[2A")
             printe("    Error! Only capital letters allowed!")
-            continue
+
         elif len(country_id) > 2:
             print("\033[2A")
             printe("    Error! Only 2 characters allowed!")
-            continue
+
         else:
             break
 
     return f"-R{country_id}"
 
 
+ERROR_NUM = "    Error, input number only"
+
+
 def input_coord_x():
+    def get_boundary(prompt, default):
+        while True:
+            try:
+                boundary = float(input(prompt).strip() or default)
+                if -180 <= boundary <= 180:
+                    return boundary
+                else:
+                    print("\033[2A")
+                    printe("    W-E coordinate range -180 to 180 degree")
+            except ValueError:
+                print("\033[2A")
+                printe("  Input numbers only!")
 
     while True:
-        try:
-            bound_x1 = float(input("  Western boundary (W): ").strip() or 107)
-            if bound_x1 < -180 or bound_x1 > 180:
-                print("\033[2A")
-                printe("    W-E coordinate range -180 to 180 degree")
-                continue
-        except ValueError:
-            print("\033[2A")
-            printe("    Input numbers only!")
-            continue
+        bound_x1 = get_boundary("  Western boundary (W): ", 107)
+        bound_x2 = get_boundary("  Eastern boundary (E): ", 108)
 
-        try:
-            bound_x2 = float(input("  Eastern boundary (E): ").strip() or 108)
-            if bound_x2 < -180 or bound_x2 > 180:
-                print("\033[2A")
-                printe("    W-E coordinate range -180 to 180 degree")
-                continue
-        except ValueError:
-            print("\033[2A")
-            printe("  Input numbers only!")
-            continue
-        if bound_x1 >= bound_x2:
-            print("\033[2A")
-            printe("\n    Western boundary must lesser than eastern boundary\n")
-            continue
-        elif bound_x1 <= bound_x2:
+        if bound_x1 < bound_x2:
             printc(f"  Longitude : {bound_x1}  -  {bound_x2} ")
-            break
-    return bound_x1, bound_x2
+            return bound_x1, bound_x2
+        else:
+            print("\033[2A")
+            printe("\n    Western boundary must be less than eastern boundary\n")
 
 
 def input_coord_y():
+    def get_boundary(prompt, default):
+        while True:
+            try:
+                boundary = float(input(prompt).strip() or default)
+                if -90 <= boundary <= 90:
+                    return boundary
+                else:
+                    print("\033[2A")
+                    printe("    N-S coordinate range -90 to 90 degree")
+            except ValueError:
+                print("\033[2A")
+                printe("  Input numbers only!")
+
     while True:
-        try:
-            bound_y1 = float(input("  Southern boundary (S): ").strip() or -7)
-            if bound_y1 < -90 or bound_y1 > 90:
-                print("\033[2A")
-                printe("    N-S coordinate range -90 to 90 degree")
-                continue
-        except ValueError:
-            print("\033[2A")
-            printe("    Input numbers only!")
-            continue
+        bound_y1 = get_boundary("  Southern boundary (S): ", -7)
+        bound_y2 = get_boundary("  Northern boundary (N): ", -6)
 
-        try:
-            bound_y2 = float(input("  Northern boundary (N): ").strip() or -6)
-            if bound_y2 < -90 or bound_y2 > 90:
-                print("\033[2A")
-                printe("    N-S coordinate range -90 to 90 degree")
-                continue
-        except ValueError:
+        if bound_y1 < bound_y2:
+            printc(f"  Latitude : {bound_y1}  -  {bound_y2} ")
+            return bound_y1, bound_y2
+        else:
             print("\033[2A")
-            printe("    Input numbers only!")
-            continue
-
-        if bound_y1 >= bound_y2:
-            print("\033[2A")
-            printe("\n    Southern boundary must lesser than northern boundary\n")
-            continue
-        elif bound_y1 <= bound_y2:
-            printc(f"  Lattitude : {bound_y1}  -  {bound_y2} ")
-            break
-    return bound_y1, bound_y2
+            printe("\n    Southern boundary must be less than northern boundary\n")
 
 
 def color_rgb_chart():
     display_rgb_chart = input("  Display the 'Color Chart' from GMT (y/n) ?:  ")
-    match display_rgb_chart:
-        case "y" | "yes" | "Y" | "Yes" | "YES":
+    match display_rgb_chart.upper():
+        case "Y" | "YES":
             utils.pictureshow(
                 os.path.join(os.path.dirname(__file__), "data", "GMT_RGBchart.png")
             )
-        case _:
-            pass
 
 
 def color_land():
@@ -324,7 +310,7 @@ def color_land():
             print("\033[2A")
             printe(f"    '{colr_land}' is not a valid color name in GMT")
             color_rgb_chart()
-            continue
+
         else:
             break
 
@@ -339,7 +325,7 @@ def color_sea():
             print("\033[2A")
             printe(f"    '{colr_sea}' is not a valid color name in GMT")
             color_rgb_chart()
-            continue
+
         else:
             break
     return colr_sea
@@ -391,13 +377,13 @@ def contour_interval(mapscale):
         elif interval > 1500.0:
             print("\033[2A")
             printe("    The contour interval is too large..")
-            continue
+
         elif interval < 1500.0 and interval >= recom:
             break
         else:
             print("\033[2A")
             printe(f"    '{interval}' is not a valid input..")
-            continue
+
     printc(f"  The contour interval is {interval} meters")
     return interval, resolution
 
@@ -413,10 +399,8 @@ def grdimage_color_palette():
                     os.path.dirname(__file__), "data", "GMT_Color_Palette_Tables.png"
                 )
             )
-        case _:
-            pass
 
-    print(f"\n  List of CPT name:")
+    print("\n  List of CPT name:")
     pl = Cmd()
     pl.columnize(palette_name, displaywidth=80)
 
@@ -433,7 +417,7 @@ def grdimage_color_palette():
             colr_cpt = "matlab/jet"
         if colr_cpt == "paired" or colr_cpt == "panoply":
             printe(f"    '{colr_cpt}' is not not supported")
-            continue
+
     return colr_cpt
 
 
@@ -453,7 +437,7 @@ def grdimage_shading():
         else:
             print("\033[2A")
             printe(f"    '{shade}' is not a valid input..")
-            continue
+
     return shading, shade
 
 
@@ -499,7 +483,6 @@ def grdimage_resolution():
             case _:
                 print("\033[2A")
                 printe(f"    Error, {grd_resolution} is not a valid input.. ")
-                continue
 
     return resolution, grd_res
 
@@ -520,87 +503,92 @@ def grdimage_mask():
         else:
             print("\033[2A")
             printe(f"    {mask} is not a valid input..")
-            continue
+
     return mask
 
 
-def date_start(*args):
-    req_type = args[0]
+def date_start(req_type):
     while True:
-        input_date_start = input(
-            (
+        input_date_start = (
+            input(
                 f"  Enter start date for the {req_type} \n(YYYYMMDD) for full date or\n(YYYY) for year only (1 Jan) :   "
             ).strip()
             or "2019"
         )
-        if not re.match("^[0-9]*$", input_date_start):
+
+        if not re.match(r"^\d*$", input_date_start):
             print("\033[3A")
-            printe("    Error, input numbers only!")
+            printe(ERROR_NUM)
             continue
-        elif len(input_date_start) != 8 and len(input_date_start) != 4:
+
+        if len(input_date_start) not in [4, 8]:
             print("\033[3A")
-            printe("    Error, input 4 or 8 characters for the year or date !")
-        else:
+            printe("    Error, input 4 or 8 characters for the year or date!")
+            continue
+
+        try:
             if len(input_date_start) == 4:
                 year_start = int(input_date_start)
-                mo_start = 1
-                day_start = 1
-            elif len(input_date_start) == 8:
-                year_start = int(input_date_start[0:4])
+                mo_start, day_start = 1, 1
+            else:
+                year_start = int(input_date_start[:4])
                 mo_start = int(input_date_start[4:6])
                 day_start = int(input_date_start[6:])
-            try:
-                input_date_start = date(year_start, mo_start, day_start)
-                if date.today() < input_date_start:
-                    print("\033[3A")
-                    printe("    Start date cannot from future")
-                    continue
-                else:
-                    printc(f"  Start date :  {input_date_start.strftime('%B %d, %Y')}")
-                    break
 
-            except ValueError as error:
+            input_date_start = date(year_start, mo_start, day_start)
+
+            if date.today() < input_date_start:
                 print("\033[3A")
-                printe(f"    Error, {error}!")
+                printe("    Start date cannot be in the future")
                 continue
+
+            printc(f"  Start date :  {input_date_start.strftime('%B %d, %Y')}")
+            break
+
+        except ValueError as error:
+            print("\033[3A")
+            printe(f"    Error, {error}!")
+            continue
 
     return input_date_start
 
 
-def date_end(*args):
-    req_type = args[0]
+def date_end(req_type):
     while True:
-        input_date_end = input(
-            (
+        input_date_end = (
+            input(
                 f"  Enter end date for the {req_type} \n(YYYYMMDD) for full date or\n(YYYY) for year only (31 Dec) :  "
             ).strip()
-            or "2021"
+            or "2023"
         )
-        if not re.match("^[0-9]*$", input_date_end):
+
+        if not re.match(r"^\d*$", input_date_end):
             print("\033[3A")
-            printe("    Error, input numbers only!")
+            printe(ERROR_NUM)
             continue
-        elif len(input_date_end) != 4 and len(input_date_end) != 8:
+
+        if len(input_date_end) not in [4, 8]:
             print("\033[3A")
-            printe("    Error, input 4 or 8 characters for the year or date !")
-        else:
+            printe("    Error, input 4 or 8 characters for the year or date!")
+            continue
+
+        try:
             if len(input_date_end) == 4:
                 year_end = int(input_date_end)
-                mo_end = 12
-                day_end = 31
-            elif len(input_date_end) == 8:
-                year_end = int(input_date_end[0:4])
+                mo_end, day_end = 12, 31
+            else:
+                year_end = int(input_date_end[:4])
                 mo_end = int(input_date_end[4:6])
                 day_end = int(input_date_end[6:])
-            try:
-                input_date_end = date(year_end, mo_end, day_end)
-                printc(f"  End date :  {input_date_end.strftime('%B %d, %Y')}")
 
-                break
-            except ValueError as error:
-                print("\033[3A")
-                printe(f"    Error, {error}!")
-                continue
+            input_date_end = date(year_end, mo_end, day_end)
+            printc(f"  End date :  {input_date_end.strftime('%B %d, %Y')}")
+            break
+
+        except ValueError as error:
+            print("\033[3A")
+            printe(f"    Error, {error}!")
+            continue
 
     return input_date_end
 
@@ -614,7 +602,7 @@ def date_start_end(*args):
         days = delta.days
         if days <= 0:
             printe("    Error, the end time must later than the start time")
-            continue
+
         else:
             printc(
                 f"  The data used is {days} days from {in_date_start.strftime('%B %d, %Y')} to {in_date_end.strftime('%B %d, %Y')}"
@@ -676,7 +664,7 @@ def inset_loc():
             case _:
                 print("\033[2A")
                 printe("    Error, choose between 1 - 9 !")
-                continue
+
     if justify == "TR":
         just_north = "TL"
     else:
@@ -684,97 +672,68 @@ def inset_loc():
     return justify, just_north, just_code
 
 
-def eq_mag_range(*args):
-    req_type = args[0]
+def eq_mag_range(req_type):
+    DEFAULT = "  \x1B[3m(press 'enter' for default value)\x1b[0m  :   "
+
+    def get_magnitude(prompt, default):
+        while True:
+            try:
+                print(prompt)
+                magnitude = int(input(DEFAULT).strip() or default)
+                if 0 <= magnitude <= 10:
+                    return magnitude
+                else:
+                    print("\033[3A")
+                    printe("    Magnitude range between 0 to 10")
+            except ValueError:
+                print("\033[3A")
+                printe("    Error, input numbers only!")
+
     while True:
-        try:
+        min_eq_mag = get_magnitude(
+            f"  Enter the minimum magnitude for the {req_type}", "0"
+        )
+        max_eq_mag = get_magnitude(
+            f"  Enter the maximum magnitude for the {req_type}", "10"
+        )
 
-            print(f"  Enter the minimum magnitude for the {req_type}")
-            min_eq_mag = int(
-                input("  \x1B[3m(press 'enter' for default value)\x1b[0m  :   ").strip()
-                or "0"
-            )
-
-            if min_eq_mag < 0 or min_eq_mag > 10:
-                print("\033[3A")
-                printe("    Magnitude range between 0 to 10")
-                continue
-        except ValueError:
-            print("\033[3A")
-            printe("    Input numbers only!")
-            continue
-
-        try:
-            print(f"  Enter the maximum magnitude for the {req_type}")
-            max_eq_mag = int(
-                input("  \x1B[3m(press 'enter' for default value)\x1b[0m  :   ").strip()
-                or "10"
-            )
-
-            if max_eq_mag < 0 or max_eq_mag > 10:
-                print("\033[3A")
-                printe("  Magnitude range between 0 to 10")
-                continue
-        except ValueError:
-            print("\033[3A")
-            printe("    Input numbers only!")
-            continue
-
-        if min_eq_mag >= max_eq_mag:
+        if min_eq_mag < max_eq_mag:
+            printc(f"  Magnitude = {min_eq_mag} - {max_eq_mag} ")
+            return min_eq_mag, max_eq_mag
+        else:
             print("\033[3A")
             printe("\n    The minimum magnitude must be lower than the maximum\n")
-            continue
-        elif min_eq_mag < max_eq_mag:
-            printc(f"  Magnitude = {min_eq_mag} - {max_eq_mag} ")
-            break
-    return min_eq_mag, max_eq_mag
 
 
-def eq_depth_range(*args):
-    req_type = args[0]
+def eq_depth_range(req_type):
+    DEFAULT = "  \x1B[3m(press 'enter' for default value)\x1b[0m  :   "
+
+    def get_depth(prompt, default):
+        while True:
+            try:
+                print(prompt)
+                depth = int(input(DEFAULT).strip() or default)
+                if 0 <= depth <= 1000:
+                    return depth
+                else:
+                    print("\033[3A")
+                    printe("    The depth range between 0 to 1000")
+            except ValueError:
+                print("\033[3A")
+                printe("    Error, input numbers only!")
+
     while True:
-        try:
+        min_eq_depth = get_depth(f"  Enter the minimum depth for the {req_type}", "0")
+        max_eq_depth = get_depth(
+            f"  Enter the maximum depth for the {req_type}", "1000"
+        )
 
-            print(f"  Enter the minimum depth for the {req_type}")
-            min_eq_depth = int(
-                input("  \x1B[3m(press 'enter' for default value)\x1b[0m  :   ").strip()
-                or "0"
-            )
-
-            if min_eq_depth < 0 or min_eq_depth > 1000:
-                print("\033[3A")
-                printe("    The depth range between 0 to 1000")
-                continue
-        except ValueError:
-            print("\033[3A")
-            printe("    Input numbers only!")
-            continue
-
-        try:
-
-            print(f"  Enter the maximum depth for the {req_type}")
-            max_eq_depth = int(
-                input("  \x1B[3m(press 'enter' for default value)\x1b[0m  :   ").strip()
-                or "1000"
-            )
-
-            if max_eq_depth < 0 or max_eq_depth > 1000:
-                print("\033[3A")
-                printe("    The depth range between 0 to 1000")
-                continue
-        except ValueError:
-            print("\033[3A")
-            printe("    Input numbers only!")
-            continue
-
-        if min_eq_depth >= max_eq_depth:
+        if min_eq_depth < max_eq_depth:
+            printc(f"  Depth = {min_eq_depth} - {max_eq_depth} Km")
+            return min_eq_depth, max_eq_depth
+        else:
             print("\033[3A")
             printe("\n    Minimum depth must be lower than maximum\n")
-            continue
-        elif min_eq_depth < max_eq_depth:
-            printc(f"  Depth = {min_eq_depth} - {max_eq_depth} Km")
-            break
-    return min_eq_depth, max_eq_depth
 
 
 def eq_catalog_source():
@@ -799,7 +758,6 @@ def eq_catalog_source():
                     printe(
                         "    No internet connection, choose 'User supplied' or cancel"
                     )
-                    continue
 
             case "2" | "2." | "ISC" | "isc" | "ISC Bulletin":
                 if utils.is_connected():
@@ -814,7 +772,6 @@ def eq_catalog_source():
                     printe(
                         "    No internet connection, choose 'User supplied' or cancel"
                     )
-                    continue
 
             case "3" | "3." | "User supplied" | "user supplied" | "user":
                 eq_cata = "From user"
@@ -830,7 +787,6 @@ def eq_catalog_source():
             case _:
                 print("\033[2A")
                 printe("    Error, pleace choose correctly..")
-                continue
 
     return eq_cata
 
@@ -878,7 +834,6 @@ def column_order(eq_path):
         else:
             print("\033[1A")
             printe("    The column order not match with the data")
-            continue
 
     return eq_column_lon, eq_column_lat, eq_column_dep, eq_column_mag, col_check
 

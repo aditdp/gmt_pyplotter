@@ -44,7 +44,7 @@ def main():
         utils.closing()
         try:
             sys.exit(130)
-        except SystemExit:
+        except SystemExit():
             os._exit(130)
 
 

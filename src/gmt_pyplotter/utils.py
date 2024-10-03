@@ -39,7 +39,9 @@ def is_connected():
         urlopen("http://www.google.com", timeout=5)
         return True
     except:
+        print("    No internet connection")
         return False
+        raise
 
 
 def app_usage_log(*args):
@@ -84,10 +86,10 @@ def system_check():
                 date_time_obj = datetime.strptime(last_time, "%Y-%m-%d %H:%M:%S.%f")
                 if datetime.now() > date_time_obj + timedelta(days=1):
                     is_gawk_gmt_installed()
-                else:
-                    pass
+
     except:
-        FileNotFoundError(is_gawk_gmt_installed())
+        is_gawk_gmt_installed()
+        raise
 
 
 def screen_clear():
@@ -100,6 +102,18 @@ def screen_clear():
 
 
 def check_terminal_size():
+    def print_terminal_size(info):
+        for _ in range(current_lines - 5):
+            print("")
+            print("\033[38;5;208m\033[3mgmt_pyplotter\033[00m")
+            print(current_columns * "-")
+            print(
+                f"Current terminal size: {current_columns} columns, {current_lines} rows"
+            )
+        print(info)
+        input("press \033[3m'Enter'\033[00m after resize the terminal window...")
+        cursor.show()
+
     while True:
         cursor.hide()
         screen_clear()
@@ -109,41 +123,15 @@ def check_terminal_size():
             cursor.show()
             break
         elif current_columns < 80 and current_lines > 30:
-            for x in range(current_lines - 5):
-                print("")
-            print("\033[38;5;208m\033[3mgmt_pyplotter\033[00m")
-            print(current_columns * "-")
-            print(
-                f"Current terminal size: {current_columns} columns, {current_lines} rows"
-            )
-            print("resize the terminal width > 80 columns")
-            input("press \033[3m'Enter'\033[00m after resize the terminal window...")
-            cursor.show()
-            continue
+            print_terminal_size("resize the terminal width > 80 columns")
+
         elif current_columns > 80 and current_lines < 30:
-            for x in range(current_lines - 5):
-                print("")
-            print("\033[38;5;208m\033[3mgmt_pyplotter\033[00m")
-            print(current_columns * "-")
-            print(
-                f"Current terminal size: {current_columns} columns, {current_lines} rows"
-            )
-            print("resize the terminal height > 30 rows ")
-            input("press \033[3m'Enter'\033[00m after resize the terminal window...")
-            cursor.show()
-            continue
+            print_terminal_size("resize the terminal height > 30 rows ")
+
         else:
-            for x in range(current_lines - 5):
-                print("")
-            print("\033[38;5;208m\033[3mgmt_pyplotter\033[00m")
-            print(current_columns * "-")
-            print(
-                f"Current terminal size: {current_columns} columns, {current_lines} rows"
+            print_terminal_size(
+                "resize the terminal width > 80 columns and height > 30 rows "
             )
-            print("resize the terminal width > 80 columns and height > 30 rows ")
-            input("press \033[3m'Enter'\033[00m after resize the terminal window...")
-            cursor.show()
-            continue
 
 
 def file_writer(*args):
@@ -196,7 +184,7 @@ def usgs_downloader(*args):
 
     print(f"\nRetrieving data from: {url}")
     urlretrieve(url, usgs_cata_file)
-    print(f"\n Done.. \n")
+    print("\n Done.. \n")
 
 
 def isc_downloader(*args):
@@ -260,8 +248,7 @@ def gmt_execute(name, output_dir):
             sys.exit(130)
         except SystemExit:
             os._exit(130)
-    else:
-        pass
+            raise
 
 
 def loading_bar(iteration, total, bar_length=73):
@@ -289,19 +276,19 @@ def finalization_bar(stage):
             end_time = time.time() + 2
             beginloading = 0
             while time.time() < end_time:
-                print(f"\033[5A")
+                print("\033[5A")
                 print(stage1)
                 print(stage2)
                 loading_bar(beginloading, 99)
                 beginloading += 1.6
                 time.sleep(0.1)
-                print(f"\033[5A")
+                print("\033[5A")
                 print(stage11)
                 print(stage2)
                 loading_bar(beginloading, 99)
                 beginloading += 1.6
                 time.sleep(0.1)
-            print(f"\033[5A")
+            print("\033[5A")
             print(stage1done)
             print(stage2)
             loading_bar(30, 99)
@@ -313,19 +300,19 @@ def finalization_bar(stage):
             end_time = time.time() + 2.4
             beginloading = 30
             while time.time() < end_time:
-                print(f"\033[5A")
+                print("\033[5A")
                 print(stage1done)
                 print(stage2)
                 loading_bar(beginloading, 99)
                 beginloading += 3
                 time.sleep(0.1)
-                print(f"\033[5A")
+                print("\033[5A")
                 print(stage1done)
                 print(stage22)
                 loading_bar(beginloading, 99)
                 beginloading += 3
                 time.sleep(0.1)
-            print(f"\033[5A")
+            print("\033[5A")
             print(stage1done)
             print(stage2done)
             loading_bar(99, 99)
@@ -337,19 +324,19 @@ def finalization_bar(stage):
             end_time = time.time() + 1.7
             beginloading = 30
             while time.time() < end_time:
-                print(f"\033[5A")
+                print("\033[5A")
                 print(stage1done)
                 print(stage2)
                 loading_bar(beginloading, 99)
                 beginloading += 3
                 time.sleep(0.1)
-                print(f"\033[5A")
+                print("\033[5A")
                 print(stage1done)
                 print(stage22)
                 loading_bar(beginloading, 99)
                 beginloading += 3
                 time.sleep(0.1)
-            print(f"\033[5A")
+            print("\033[5A")
             print(stage1done)
             print(stage2fail)
             loading_bar(81, 99)
@@ -373,13 +360,13 @@ def info_display(args):
 
     while time.time() < end_time:
 
-        print(f"\033[0;0H")
+        print("\033[0;0H")
         logo_brin(pr1, pr2, pr3, pr4, pr5, pr6)
         loading_bar(begin_loading, 100)
 
         time.sleep(duration_blink)
 
-        print(f"\033[0;0H")
+        print("\033[0;0H")
         logo_brin(pr1, pr21, pr31, pr4, pr5, pr6)
         loading_bar(begin_loading, 100)
         begin_loading += 2
@@ -387,18 +374,20 @@ def info_display(args):
     cursor.show()
 
 
-def info_generator(status: int, apps: str, apps_long: str, version=""):
+def info_generator(status: int, apps: str, version=""):
     # variable for coloring the print output
     bg_reset = "\033[0;0m"
     bg_green = "\033[48;5;46m\033[38;5;198m"
     bg_yellow = "\033[48;5;226m\033[38;5;198m"
     bg_red = "\033[48;5;196m"
     if apps == "gawk":
+        apps_long = "GNU AWK"
         process = 2
-        app_color = f"\033[38;5;208m"
+        app_color = "\033[38;5;208m"
     else:
+        apps_long = "Generic Mapping Tools"
         process = 52
-        app_color = f"\033[38;5;33m"
+        app_color = "\033[38;5;33m"
 
     match status:
         case 1:  # Apps installed, version match
@@ -414,14 +403,14 @@ def info_generator(status: int, apps: str, apps_long: str, version=""):
             bg_color2 = bg_red
             pr4 = f"{app_color}{apps.upper()}{bg_reset} version not supported"
             pr5 = f"Update {app_color}{apps.upper()}{bg_reset} version.."
-            pr6 = f"Press any key to quit ..."
+            pr6 = "Press any key to quit ..."
 
         case 3:  # Apps not installed
             bg_color1 = bg_red
             bg_color2 = bg_red
             pr4 = f"{app_color}{apps_long} not found"
             pr5 = f"Please install the {app_color}{apps.upper()}{bg_reset} program!"
-            pr6 = f"Press any key to quit ..."
+            pr6 = "Press any key to quit ..."
 
     pr1 = f"{app_color}{apps_long}{bg_reset} in this system:"
     pr2 = f"   Location : {shutil.which(apps)}"
@@ -438,13 +427,13 @@ def is_gawk_gmt_installed():
     gmt_location = shutil.which("gmt")
     gawk_location = shutil.which("gawk")
     if gawk_location:
-        getgawkVersion = subprocess.Popen(
+        getgawkversion = subprocess.Popen(
             "gawk --version", shell=SHELL, stdout=subprocess.PIPE
         ).stdout
-        gawk_ver = getgawkVersion.read()
+        gawk_ver = getgawkversion.read()
         gawk_ver = gawk_ver[8:13]
         gawk_ver = gawk_ver.decode().rstrip()
-        info_stat = info_generator(1, "gawk", "GNU AWK", gawk_ver)
+        info_stat = info_generator(1, "gawk", gawk_ver)
         info_display(info_stat)
         # time.sleep(1)
     else:
@@ -457,7 +446,7 @@ def is_gawk_gmt_installed():
                 r"""For /F "Skip=2Tokens=1-2*" %A In ('Reg Query HKCU\Environment /V PATH 2^>Nul') Do setx PATH "%C;C:\Program Files (x86)\GnuWin32\bin"""
             )
         else:
-            info_stat = info_generator(3, "gawk", "GNU AWK")
+            info_stat = info_generator(3, "gawk")
             screen_clear()
             info_display(info_stat)
             instal_gawk = input(
@@ -484,38 +473,38 @@ def is_gawk_gmt_installed():
     if gmt_location:
         if len(gmt_location) > 23:
             gmt_location = f"...{gmt_location[-20:]}"
-        else:
-            pass
-        getgmtVersion = subprocess.Popen(
+
+        getgmtversion = subprocess.Popen(
             "gmt --version", shell=SHELL, stdout=subprocess.PIPE
         ).stdout
-        gmt_ver = getgmtVersion.read()
+        gmt_ver = getgmtversion.read()
         gmt_ver = gmt_ver.decode().rstrip()
+
         screen_clear()
         if float(gmt_ver[0:3]) >= 6.4:
-            info_stat = info_generator(1, "gmt", "Generic Mapping Tools", gmt_ver)
+            info_stat = info_generator(1, "gmt", gmt_ver)
             info_display(info_stat)
 
         else:
-            info_stat = info_generator(2, "gmt", "Generic Mapping Tools", gmt_ver)
+            info_stat = info_generator(2, "gmt", gmt_ver)
             info_display(info_stat)
 
             input()
             print("")
             closing()
             sys.exit(
-                f" \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires GMT version to 6.4.0 or latter to operate\n      Please update the GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
+                " \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires GMT version to 6.4.0 or latter to operate\n      Please update the GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
             )
 
     else:
-        info_stat = info_generator(3, "gmt", "Generic Mapping Tools")
+        info_stat = info_generator(3, "gmt")
         screen_clear()
         info_display(info_stat)
         input()
         print("")
         closing()
         sys.exit(
-            f" \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires Generic Mapping Tools to operate\n       Please install GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
+            " \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires Generic Mapping Tools to operate\n       Please install GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
         )
 
 

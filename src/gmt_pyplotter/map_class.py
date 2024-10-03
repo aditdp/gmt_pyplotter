@@ -1,5 +1,6 @@
 from itertools import zip_longest
 from gmt_pyplotter import user_input as ui
+import gmt_pyplotter.experiment.askdir
 from gmt_pyplotter.user_input import printc, printe
 from gmt_pyplotter import utils
 import os, copy, subprocess, cursor
@@ -27,14 +28,10 @@ class FileName:
     def file_output_path(self):
         return os.path.join(f"{self.output_path},{self.fname}.{self.output_format}")
 
-    # @name.setter
-    # def name(self, new_name):
-    #     self.fname = new_name
-
 
 class Coordinate:
     def __init__(self):
-        self.bound_x1, self.bound_x2 = ui.input_coord_x()
+        self.bound_x1, self.bound_x2 = gmt_pyplotter.experiment.askdir.input_coord_x()
         self.bound_y1, self.bound_y2 = ui.input_coord_y()
 
     def mid_x(self):
@@ -131,7 +128,7 @@ class Layer(FileName, Coordinate, Projection):
             add_layer = input("Add another layer (y/n):  ")
             if add_layer.lower() == "y" or add_layer == "yes":
                 layer += 1
-                continue
+
             elif add_layer.lower() == "n" or add_layer == "no":
                 print(f"{layer} layers added to the map")
                 break
@@ -139,7 +136,7 @@ class Layer(FileName, Coordinate, Projection):
     def input_map_fill(self):
         """User input for map fill layer"""
 
-        while True:
+        def print_menu():
             print("")
             print(70 * ".")
             print("  The map layer:")
@@ -156,80 +153,68 @@ class Layer(FileName, Coordinate, Projection):
             )
             print(70 * ".")
             print("")
+
+        def handle_no_connection(message):
+            cursor.hide()
+            printe(message)
+            input("  Press 'enter' for change Layer")
+            cursor.show()
+            return {"script": "change"}
+
+        while True:
+            print_menu()
             user_map_fill = input("  Choose the map layer: ")
 
             if user_map_fill == "1":
                 user_layer = self.layer_coast()
                 print("Coastal line layer added..")
-                user_map_fill = "coast"
                 break
 
             elif user_map_fill == "2":
                 if utils.is_connected():
                     user_layer = self.layer_grdimage()
                     print("Earth relief layer added..")
-                    user_map_fill = "grdimage"
-                    break
                 else:
-                    cursor.hide()
-                    printe(
+                    user_layer = handle_no_connection(
                         "    No internet connection, grdimage need to download the grid file.."
                     )
-                    input("  Press 'enter' for change Layer")
-                    user_layer = {"script": "change"}
-                    cursor.show()
-                    break
+                break
 
             elif user_map_fill == "3":
                 if utils.is_connected():
                     user_layer = self.layer_contour()
                     print("Contour layer added..")
-                    user_map_fill = "contour"
-                    break
                 else:
-                    cursor.hide()
-                    printe(
+                    user_layer = handle_no_connection(
                         "    No internet connection, grdcontour need to download the elevation file.."
                     )
-                    input("  Press 'enter' for change Layer")
-                    user_layer = {"script": "change"}
-                    cursor.show()
-                    break
+                break
 
             elif user_map_fill == "4":
                 user_layer = self.layer_earthquake()
                 if user_layer == "cancel":
                     user_layer = {"script": "change"}
                 print("Earthquake layer added..")
-                user_map_fill = "plot"
                 break
 
             elif user_map_fill == "5":
                 if utils.is_connected():
                     user_layer = self.layer_focmec()
                     print("Focal mechanism plot layer added..")
-                    user_map_fill = "meca"
-                    break
                 else:
-                    cursor.hide()
-                    printe(
+                    user_layer = handle_no_connection(
                         "    No internet connection for downloading the focal mechanism data.."
                     )
-                    input("  Press 'enter' for change Layer")
-                    user_layer = {"script": "change"}
-                    cursor.show()
-                    break
+                break
 
             elif user_map_fill == "6":
                 user_layer = self.layer_indo_tecto()
                 print("Indo Regional Tectonic layer added..")
-                user_map_fill = "plot"
                 break
 
             elif user_map_fill == "7":
                 user_layer = self.layer_inset()
                 print("Inset map added..")
-                user_map_fill = "inset"
                 break
 
             elif user_map_fill == "0":
@@ -241,7 +226,7 @@ class Layer(FileName, Coordinate, Projection):
                 print("\033[18A")
                 printe("    Please choose between 1 to 7")
                 printe("    or 0 for cancel adding more layer")
-                continue
+
         return user_layer
 
     @property
@@ -371,10 +356,10 @@ class Layer(FileName, Coordinate, Projection):
                     break
                 case _:
                     printe(f"    '{askcolorbar}' is not a valid input")
-                    continue
+
         if position == "none":
             colorbar = ""
-            printc(f"  Color bar is 'not added' to the map")
+            printc("  Color bar is 'not added' to the map")
         else:
             printc(f"  Color bar location on '{askcolorbar}' side of the map")
             colorbar = f"\tgmt colorbar -DJ{position}+w50% -Bx{colorbar_interval[0]}+lElevation -By+lMeters\n"
@@ -411,12 +396,12 @@ class Layer(FileName, Coordinate, Projection):
                 f"{self.name}_{self.__source}-catalog.txt",
             )
             self.__scaler = float(self.map_size) * 0.0005
-            if self.__source == "From user":
-                pass
-            else:
-                self.__eq_date = ui.date_start_end("earthquake catalog")
-                self.__eq_mag = ui.eq_mag_range("earthquake catalog")
-                self.__eq_depth = ui.eq_depth_range("earthquake catalog")
+            if self.__source != "From user":
+                USAGE = "earthquake catalog"
+
+                self.__eq_date = ui.date_start_end(USAGE)
+                self.__eq_mag = ui.eq_mag_range(USAGE)
+                self.__eq_depth = ui.eq_depth_range(USAGE)
             match self.__source:
                 case "USGS":
                     self.__lonlatdepmag = f"$3,$2,$4,$5*$5*{str(self.__scaler)}"
@@ -445,7 +430,7 @@ class Layer(FileName, Coordinate, Projection):
                     self.__lonlatdepmag = f"${self.column[0]},${self.column[1]},$   {self.column[2]},${self.column[3]}*${self.column[3]*{str   (self.__scaler)}},"
             if os.name == "posix":
                 self.__layer = (
-                    f"\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n"
+                    "\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n"
                     + """\tgawk -F "," '{ print """
                     + self.__lonlatdepmag
                     + "}' "
@@ -454,7 +439,7 @@ class Layer(FileName, Coordinate, Projection):
                 )
             elif os.name == "nt":
                 self.__layer = (
-                    f"\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n"
+                    "\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n"
                     + """\tgawk -F "," "{ print """
                     + self.__lonlatdepmag
                     + '}" '
@@ -476,10 +461,11 @@ class Layer(FileName, Coordinate, Projection):
         return self.earthquake
 
     def layer_focmec(self):
+        fm = "focal mechanism"
         self.fm_file = os.path.join(self.dir_output_path, f"{self.name}_gcmt.txt")
-        self.__gcmt_date = ui.date_start_end("focal mechanism")
-        self.__gcmt_mag = ui.eq_mag_range("focal mechanism")
-        self.__gcmt_depth = ui.eq_depth_range("focal mechanism")
+        self.__gcmt_date = ui.date_start_end(fm)
+        self.__gcmt_mag = ui.eq_mag_range(fm)
+        self.__gcmt_depth = ui.eq_depth_range(fm)
         self.__scaler = float(self.map_size) * 0.02
         self.__layer = "\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N -Ve\n\tgmt meca {} -Sd{}c+f0 -C -W01p,gray50 -Ve\n".format(
             self.fm_file,
