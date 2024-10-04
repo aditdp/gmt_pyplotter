@@ -65,9 +65,15 @@ Then input the required parameter based on the map to be generate
 2. Open terminal (linux or macOS) or cmd / powershell (Windows operating system)
 3. Change directory to the directory of  installer where there is setup.py exist,  and enter the following command:
 
-```python
-pip install .
-```
+   ```
+   pip install .
+   ```
+
+   To uninstall just enter following command:
+
+   ```
+   pip uninstal gmt_pyplotter
+   ```
 
 ## License
 

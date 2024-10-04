@@ -16,6 +16,7 @@ setup(
             "data/*.png",
             "data/fault_sukamto2011",
             "data/*.exe",
+            "*log",
         ]
     },
     install_requires=["setuptools", "Pillow", "cursor"],

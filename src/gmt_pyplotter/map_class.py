@@ -1,6 +1,5 @@
 from itertools import zip_longest
 from gmt_pyplotter import user_input as ui
-import gmt_pyplotter.experiment.askdir
 from gmt_pyplotter.user_input import printc, printe
 from gmt_pyplotter import utils
 import os, copy, subprocess, cursor
@@ -31,7 +30,7 @@ class FileName:
 
 class Coordinate:
     def __init__(self):
-        self.bound_x1, self.bound_x2 = gmt_pyplotter.experiment.askdir.input_coord_x()
+        self.bound_x1, self.bound_x2 = ui.input_coord_x()
         self.bound_y1, self.bound_y2 = ui.input_coord_y()
 
     def mid_x(self):
@@ -137,8 +136,7 @@ class Layer(FileName, Coordinate, Projection):
         """User input for map fill layer"""
 
         def print_menu():
-            print("")
-            print(70 * ".")
+            print("\n" + "." * 70)
             print("  The map layer:")
             print("  1. Coastal line")
             print("  2. Earth relief*")
@@ -149,79 +147,44 @@ class Layer(FileName, Coordinate, Projection):
             print("  7. Map inset")
             print("  0. Cancel")
             print(
-                "\x1B[3m  The layers followed by * need internet connection to operate\x1B[0m"
+                "\x1B[3m  The layers followed by * need internet  connection to    operate\x1B[0m"
             )
-            print(70 * ".")
-            print("")
+            print("." * 70 + "\n")
 
         def handle_no_connection(message):
             cursor.hide()
             printe(message)
-            input("  Press 'enter' for change Layer")
+            input("  Press 'enter' to change Layer")
             cursor.show()
             return {"script": "change"}
+
+        layer_options = {
+            "1": (self.layer_coast, "Coastal line layer added.."),
+            "2": (self.layer_grdimage, "Earth relief layer added.."),
+            "3": (self.layer_contour, "Contour layer added.."),
+            "4": (self.layer_earthquake, "Earthquake layer added.."),
+            "5": (self.layer_focmec, "Focal mechanism plot layer added.."),
+            "6": (self.layer_indo_tecto, "Indo Regional Tectonic layer added.."),
+            "7": (self.layer_inset, "Inset map added.."),
+            "0": (None, "Cancel adding another layer.."),
+        }
 
         while True:
             print_menu()
             user_map_fill = input("  Choose the map layer: ")
 
-            if user_map_fill == "1":
-                user_layer = self.layer_coast()
-                print("Coastal line layer added..")
-                break
-
-            elif user_map_fill == "2":
-                if utils.is_connected():
-                    user_layer = self.layer_grdimage()
-                    print("Earth relief layer added..")
-                else:
+            if user_map_fill in layer_options:
+                layer_function, success_message = layer_options[user_map_fill]
+                if user_map_fill in ["2", "3", "5"] and not utils.is_connected():
                     user_layer = handle_no_connection(
-                        "    No internet connection, grdimage need to download the grid file.."
+                        f"    No internet connection, {success_message.lower()}"
                     )
-                break
-
-            elif user_map_fill == "3":
-                if utils.is_connected():
-                    user_layer = self.layer_contour()
-                    print("Contour layer added..")
                 else:
-                    user_layer = handle_no_connection(
-                        "    No internet connection, grdcontour need to download the elevation file.."
+                    user_layer = (
+                        layer_function() if layer_function else {"script": "cancel"}
                     )
+                    print(success_message)
                 break
-
-            elif user_map_fill == "4":
-                user_layer = self.layer_earthquake()
-                if user_layer == "cancel":
-                    user_layer = {"script": "change"}
-                print("Earthquake layer added..")
-                break
-
-            elif user_map_fill == "5":
-                if utils.is_connected():
-                    user_layer = self.layer_focmec()
-                    print("Focal mechanism plot layer added..")
-                else:
-                    user_layer = handle_no_connection(
-                        "    No internet connection for downloading the focal mechanism data.."
-                    )
-                break
-
-            elif user_map_fill == "6":
-                user_layer = self.layer_indo_tecto()
-                print("Indo Regional Tectonic layer added..")
-                break
-
-            elif user_map_fill == "7":
-                user_layer = self.layer_inset()
-                print("Inset map added..")
-                break
-
-            elif user_map_fill == "0":
-                print("Cancel adding another layer..")
-                user_layer = {"script": "cancel"}
-                break
-
             else:
                 print("\033[18A")
                 printe("    Please choose between 1 to 7")
@@ -307,8 +270,7 @@ class Layer(FileName, Coordinate, Projection):
         elevmax = int(grdinfo[5])
         elevmin = int(grdinfo[4])
         total_elev = elevmax + abs(elevmin)
-        print(total_elev)
-        input()
+
         if total_elev in range(5000, 20000):
             interval = 1000
         elif total_elev in range(2500, 5000):
@@ -604,171 +566,78 @@ class MainMap(Layer):
         print(general)
 
     def layer_info(self):
-        """Printing the layer info"""
+        """Prints information about the layers."""
         layer_print = copy.deepcopy(self.layers)
+
+        # Remove the 'script' key from each layer
         for layer in range(1, len(layer_print) + 1):
             del layer_print[f"Layer {layer}"]["script"]
+
         self.__columns = list(layer_print.keys())
         print("  LAYERS  ".center(80, "="))
         print("")
 
-        match len(layer_print):
-            case 1:
-                print("  Layer 1")
-                print((80 * "-"))
-                for key, val in layer_print["Layer 1"].items():
-                    print(f"  {key:<10}: {val}")
+        # Create a mapping of layer count to print function
+        layer_count = len(layer_print)
+        print_function = self._get_print_function(layer_count)
 
-            case 2:
-                dkeys = list(
-                    zip_longest(
-                        layer_print["Layer 1"], layer_print["Layer 2"], fillvalue=" "
-                    )
-                )
+        if print_function:
+            print_function(layer_print)
 
-                dvalues = list(
-                    zip_longest(
-                        layer_print["Layer 1"].values(),
-                        layer_print["Layer 2"].values(),
-                        fillvalue=" ",
-                    )
-                )
-
-                print(" ", (21 * " ").join(self.__columns))
-                print((80 * "-"))
-                for l1, l2 in zip(dkeys, dvalues):
-                    print(f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15}")
-
-            case 3:
-                dkeys = list(
-                    zip_longest(
-                        layer_print["Layer 1"],
-                        layer_print["Layer 2"],
-                        layer_print["Layer 3"],
-                        fillvalue=" ",
-                    )
-                )
-
-                dvalues = list(
-                    zip_longest(
-                        layer_print["Layer 1"].values(),
-                        layer_print["Layer 2"].values(),
-                        layer_print["Layer 3"].values(),
-                        fillvalue=" ",
-                    )
-                )
-
-                print(" ", (21 * " ").join(self.__columns))
-                print((80 * "-"))
-                for l1, l2 in zip(dkeys, dvalues):
-                    print(
-                        f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15} {l1[2]:<10}: {l2[2]:<15} "
-                    )
-
-            case 4:
-                dkeys = list(
-                    zip_longest(
-                        layer_print["Layer 1"],
-                        layer_print["Layer 2"],
-                        layer_print["Layer 3"],
-                        layer_print["Layer 4"],
-                        fillvalue=" ",
-                    )
-                )
-
-                dvalues = list(
-                    zip_longest(
-                        layer_print["Layer 1"].values(),
-                        layer_print["Layer 2"].values(),
-                        layer_print["Layer 3"].values(),
-                        layer_print["Layer 4"].values(),
-                        fillvalue=" ",
-                    )
-                )
-
-                print(" ", (21 * " ").join(self.__columns[0:3]))
-                print((80 * "-"))
-                for l1, l2 in zip(dkeys, dvalues):
-                    print(
-                        f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15} {l1[2]:<10}: {l2[2]:<15} "
-                    )
-                print((80 * "-"))
-                print(" ", (21 * " ").join(self.__columns[3:4]))
-                print((80 * "-"))
-                for l1, l2 in zip(dkeys, dvalues):
-                    print(f"  {l1[3]:<10}: {l2[3]:<15} ")
-
-            case 5:
-                dkeys = list(
-                    zip_longest(
-                        layer_print["Layer 1"],
-                        layer_print["Layer 2"],
-                        layer_print["Layer 3"],
-                        layer_print["Layer 4"],
-                        layer_print["Layer 5"],
-                        fillvalue=" ",
-                    )
-                )
-
-                dvalues = list(
-                    zip_longest(
-                        layer_print["Layer 1"].values(),
-                        layer_print["Layer 2"].values(),
-                        layer_print["Layer 3"].values(),
-                        layer_print["Layer 4"].values(),
-                        layer_print["Layer 5"].values(),
-                        fillvalue=" ",
-                    )
-                )
-
-                print(" ", (21 * " ").join(self.__columns[0:3]))
-                print((80 * "-"))
-                for l1, l2 in zip(dkeys, dvalues):
-                    print(
-                        f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15} {l1[2]:<10}: {l2[2]:<15} "
-                    )
-                print((80 * "-"))
-                print(" ", (21 * " ").join(self.__columns[3:5]))
-                print((80 * "-"))
-                for l1, l2 in zip(dkeys, dvalues):
-                    print(f"  {l1[3]:<10}: {l2[3]:<15} {l1[4]:<10}: {l2[4]:<15} ")
-
-            case 6:
-                dkeys = list(
-                    zip_longest(
-                        layer_print["Layer 1"],
-                        layer_print["Layer 2"],
-                        layer_print["Layer 3"],
-                        layer_print["Layer 4"],
-                        layer_print["Layer 5"],
-                        layer_print["Layer 6"],
-                        fillvalue=" ",
-                    )
-                )
-
-                dvalues = list(
-                    zip_longest(
-                        layer_print["Layer 1"].values(),
-                        layer_print["Layer 2"].values(),
-                        layer_print["Layer 3"].values(),
-                        layer_print["Layer 4"].values(),
-                        layer_print["Layer 5"].values(),
-                        layer_print["Layer 6"].values(),
-                        fillvalue=" ",
-                    )
-                )
-
-                print(" ", (21 * " ").join(self.__columns[0:3]))
-                print((80 * "-"))
-                for l1, l2 in zip(dkeys, dvalues):
-                    print(
-                        f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15} {l1[2]:<10}: {l2[2]:<15} "
-                    )
-                print((80 * "-"))
-                print(" ", (21 * " ").join(self.__columns[3:6]))
-                print((80 * "-"))
-                for l1, l2 in zip(dkeys, dvalues):
-                    print(
-                        f"  {l1[3]:<10}: {l2[3]:<15} {l1[4]:<10}: {l2[4]:<15} {l1[5]:<10}: {l2[5]:<15} "
-                    )
         print((80 * "="))
+
+    def _get_print_function(self, layer_count):
+        """Returns the appropriate print function based on the number of layers."""
+        if layer_count == 1:
+            return self._print_one_layer
+        elif layer_count == 2:
+            return self._print_two_layers
+        elif layer_count == 3:
+            return self._print_three_layers
+        elif layer_count == 4:
+            return self._print_four_layers
+        elif layer_count == 5:
+            return self._print_five_layers
+        elif layer_count == 6:
+            return self._print_six_layers
+        return None
+
+    def _print_one_layer(self, layer_print):
+        print("  Layer 1")
+        print((80 * "-"))
+        for key, val in layer_print["Layer 1"].items():
+            print(f"  {key:<10}: {val}")
+
+    def _print_two_layers(self, layer_print):
+        self._print_multiple_layers(layer_print, 2)
+
+    def _print_three_layers(self, layer_print):
+        self._print_multiple_layers(layer_print, 3)
+
+    def _print_four_layers(self, layer_print):
+        self._print_multiple_layers(layer_print, 4)
+
+    def _print_five_layers(self, layer_print):
+        self._print_multiple_layers(layer_print, 5)
+
+    def _print_six_layers(self, layer_print):
+        self._print_multiple_layers(layer_print, 6)
+
+    def _print_multiple_layers(self, layer_print, layer_count):
+        dkeys = list(
+            zip_longest(
+                *[layer_print[f"Layer {i+1}"] for i in range(layer_count)],
+                fillvalue=" ",
+            )
+        )
+        dvalues = list(
+            zip_longest(
+                *[layer_print[f"Layer {i+1}"].values() for i in range(layer_count)],
+                fillvalue=" ",
+            )
+        )
+
+        print(" ", (21 * " ").join(self.__columns[:layer_count]))
+        print((80 * "-"))
+        for l1, l2 in zip(dkeys, dvalues):
+            print("  ".join(f"{l1[i]:<10}: {l2[i]:<15}" for i in range(layer_count)))

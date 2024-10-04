@@ -1,6 +1,6 @@
 from gmt_pyplotter import map_class, utils
 from gmt_pyplotter import user_input as ui
-import os, sys
+import os, sys, cursor
 
 
 def main():
@@ -42,10 +42,16 @@ def main():
     except KeyboardInterrupt:
         ui.printe("\n\n    KeyboardInterrupt: Exiting the program..\n")
         utils.closing()
+        cursor.show()
         try:
             sys.exit(130)
-        except SystemExit():
+        except SystemExit:
             os._exit(130)
+            raise
+
+
+if __name__ == "__main__":
+    main()
 
 
 # cek aplikasi dependency: gmt, gawk, awk   : done

@@ -1,5 +1,5 @@
-from gmt_pyplotter.data.color_list import unique_color, palette_name
 from gmt_pyplotter import utils
+from gmt_pyplotter.data.color_list import unique_color, palette_name
 import os.path, re, sys
 from cmd import Cmd
 from datetime import date
@@ -33,25 +33,31 @@ def add_gawk_path():
     else:
         while True:
             print("  Locate the installed GnuWin32 'bin' directory.. ")
-            gawk_path = askdirectory(
+            gawk_path_raw = askdirectory(
                 initialdir=os.getcwd(),
                 mustexist=True,
                 title="  Browse for 'GnuWin32/bin' folder.. ",
             )
-            if os.path.isfile(os.path.join(gawk_path, "bin", "gawk.exe")):
-                real_gawk_path = os.path.join(gawk_path, "bin")
+            gawk_path_win = ""
+            gawk_path_split = gawk_path_raw.split("/")
+
+            for x in range(len(gawk_path_split)):
+                gawk_path_win += gawk_path_raw[x] + "\\"
+            if os.path.isfile(os.path.join(gawk_path_win, "bin", "gawk.exe")):
+                real_gawk_path = os.path.join(gawk_path_win, "bin")
                 break
-            elif os.path.isfile(os.path.join(gawk_path, "gawk.exe")):
-                real_gawk_path = gawk_path
+            elif os.path.isfile(os.path.join(gawk_path_win, "gawk.exe")):
+                real_gawk_path = gawk_path_win
                 break
             else:
-                printe(f"  '{gawk_path}' is not valid GnuWin32 folder")
+                printe(f"  '{gawk_path_win}' is not valid GnuWin32 folder")
     printc(f"  gawk path = {real_gawk_path}")
-    return real_gawk_path.replace("/", "\\")
+    return real_gawk_path
 
 
 def save_loc():
     print("\n  Select the output (figure, gmt script & another data) directory ..\n")
+    input("  Press 'enter' to open browsing window..")
     while True:
         output_path = askdirectory(
             initialdir=os.getcwd(),
@@ -61,6 +67,7 @@ def save_loc():
         if output_path:
             break
         else:
+            printe("    No directory selected")
             retry = input("  Do you want to retry (y/n)? ")
             match retry.upper():
                 case "Y" | "YES" | "YA":
@@ -69,8 +76,9 @@ def save_loc():
                     try:
                         print(" End of the program ".center(80, "="))
                         sys.exit(130)
-                    except SystemExit():
+                    except SystemExit:
                         os._exit(130)
+                        raise
     if os.name == "nt":
         output_path = output_path.replace("/", "\\")
     if len(output_path) < 59:
@@ -84,15 +92,15 @@ def save_loc():
 def file_out_format():
     print(
         """  List supported image ouput format in GMT:
-  1. |bmp| Microsoft Bit Map
-  2. |eps| Encapsulated PostScript
-  3. |jpg| Joint Photographic Experts Group Format
-  4. |pdf| Portable Document Format
-  5. |png| Portable Network Graphics \033[38;5;81m[Default]\033[00m
-  6. |PNG| Portable Network Graphics (with transparency layer)
-  7. |ppm| Portable Pixel Map
-  8. |ps | Plain PostScript
-  9. |tif| Tagged Image Format File
+  1. |\033[38;5;81mbmp\033[00m| Microsoft Bit Map
+  2. |\033[38;5;81meps\033[00m| Encapsulated PostScript
+  3. |\033[38;5;81mjpg\033[00m| Joint Photographic Experts Group Format
+  4. |\033[38;5;81mpdf\033[00m| Portable Document Format
+  5. |\033[38;5;81mpng\033[00m| Portable Network Graphics \033[38;5;81m[Default]\033[00m
+  6. |\033[38;5;81mPNG\033[00m| Portable Network Graphics (with transparency layer)
+  7. |\033[38;5;81mppm\033[00m| Portable Pixel Map
+  8. |\033[38;5;81mps \033[00m| Plain PostScript
+  9. |\033[38;5;81mtif\033[00m| Tagged Image Format File
 
   Press enter for default 'png'."""
     )

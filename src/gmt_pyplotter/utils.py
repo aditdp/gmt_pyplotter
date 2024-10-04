@@ -76,20 +76,16 @@ def app_usage_log(*args):
 
 def system_check():
     log_path = os.path.join(os.path.dirname(__file__), "app_usage.log")
-    try:
-        with open(log_path, "r") as file:
-            file.seek(0)
-            last_time = file.readline().strip()
-            print(last_time)
-            if last_time:
-
-                date_time_obj = datetime.strptime(last_time, "%Y-%m-%d %H:%M:%S.%f")
-                if datetime.now() > date_time_obj + timedelta(days=1):
-                    is_gawk_gmt_installed()
-
-    except:
-        is_gawk_gmt_installed()
-        raise
+    with open(log_path, "r") as file:
+        file.seek(0)
+        last_time = file.readline().strip()
+        print(last_time)
+        if last_time:
+            date_time_obj = datetime.strptime(last_time, "%Y-%m-%d %H:%M:%S.%f")
+            if datetime.now() > date_time_obj + timedelta(days=1):
+                is_gawk_gmt_installed()
+        else:
+            is_gawk_gmt_installed()
 
 
 def screen_clear():
