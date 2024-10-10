@@ -13,13 +13,7 @@ Generic Mapping Tools (GMT) is an open source collection of about 100 command-li
 
 ## GMT_Pyplotter
 
-Just type the parameters, the program will generate and download the requested data for you.
-
-Run interactively in command line interface with input validation, no need to worries to the error.
-
-Working on Windows, Linux or macOS
-
-If the output not as expected, re-run the gmt_pyplotter.
+Executable python code, that help user to create GMT script in interactive way. Just type the parameters, the program will generate and download the requested data for you. Run interactively in command line interface with input validation with error handling. Each needed variable for each process, calculated carefully based on user input. Flexible with available operating system, works on Windows, Linux or macOS. If the output not as expected, re-run the gmt_pyplotter.
 
 ### How it's work
 

@@ -1,5 +1,6 @@
 from gmt_pyplotter import map_class, utils
 from gmt_pyplotter import user_input as ui
+
 import os, sys, cursor
 
 
@@ -12,8 +13,8 @@ def main():
 
         map_main = map_class.MainMap()
         utils.screen_clear()
-        map_main.general_info()
-        map_main.layer_info()
+        map_main.get_general_info()
+        map_main.get_layer_info()
 
         map_main.layer_writer()
 
@@ -25,7 +26,8 @@ def main():
             f"  {map_main.name}.{map_main.format} successfully created in output folder"
         )
         print("\n")
-        utils.pictureshow(
+
+        utils.show_output_image_and_directory(
             os.path.join(
                 map_main.dir_output_path,
                 f"{map_main.name}.{map_main.format}",

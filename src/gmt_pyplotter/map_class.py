@@ -1,15 +1,18 @@
 from itertools import zip_longest
+import os
+import copy
+import subprocess
+import cursor
 from gmt_pyplotter import user_input as ui
 from gmt_pyplotter.user_input import printc, printe
 from gmt_pyplotter import utils
-import os, copy, subprocess, cursor
 
 
 class FileName:
     def __init__(self) -> str:
-        self.output_path = ui.save_loc()
-        self.output_format = ui.file_out_format()
-        self.fname = ui.file_name(self.output_path, self.output_format)
+        self.output_path = ui.get_save_loc()
+        self.output_format = ui.get_file_out_format()
+        self.fname = ui.get_file_name(self.output_path, self.output_format)
 
     @property
     def name(self):
@@ -30,8 +33,8 @@ class FileName:
 
 class Coordinate:
     def __init__(self):
-        self.bound_x1, self.bound_x2 = ui.input_coord_x()
-        self.bound_y1, self.bound_y2 = ui.input_coord_y()
+        self.bound_x1, self.bound_x2 = ui.get_coord_x()
+        self.bound_y1, self.bound_y2 = ui.get_coord_y()
 
     def mid_x(self):
         return (self.bound_x2 + self.bound_x1) / 2
@@ -82,8 +85,8 @@ class Coordinate:
 
 class Projection:
     def __init__(self):
-        self.proj = ui.input_projection()
-        self.size = ui.input_size()
+        self.proj = ui.get_projection()
+        self.size = ui.get_map_width()
 
     @property
     def map_size(self):
@@ -101,23 +104,32 @@ class Projection:
             return f"-J{self.proj}{Coordinate.mid_x(self)}/{Coordinate.mid_y(self)}/{self.size}c+z100"
 
 
+lyr1 = "Layer 1"
+lyr2 = "Layer 2"
+lyr3 = "Layer 3"
+lyr4 = "Layer 4"
+lyr5 = "Layer 5"
+lyr6 = "Layer 6"
+
+
 class Layer(FileName, Coordinate, Projection):
+
     def __init__(self):
         FileName.__init__(self)
         Coordinate.__init__(self)
         Projection.__init__(self)
         utils.screen_clear()
-        MainMap.general_info(self)
+        MainMap.get_general_info(self)
 
         print("  Adding layer for main map..\n")
         self.layers = dict()
         layer = 1
         while layer < 8:
             # for layer in range(1, 7):
-            self.layers[f"Layer {layer}"] = self.input_map_fill()
+            self.layers[f"Layer {layer}"] = self.get_input_map_fill()
             utils.screen_clear()
-            MainMap.general_info(self)
-            MainMap.layer_info(self)
+            MainMap.get_general_info(self)
+            MainMap.get_layer_info(self)
             if self.layers[f"Layer {layer}"]["script"] == "cancel":
                 del self.layers[f"Layer {layer}"]
                 break
@@ -132,7 +144,7 @@ class Layer(FileName, Coordinate, Projection):
                 print(f"{layer} layers added to the map")
                 break
 
-    def input_map_fill(self):
+    def get_input_map_fill(self):
         """User input for map fill layer"""
 
         def print_menu():
@@ -210,8 +222,8 @@ class Layer(FileName, Coordinate, Projection):
         return self.base_script, self.__layer
 
     def layer_coast(self):
-        self.__colr_land = ui.color_land()
-        self.__colr_sea = ui.color_sea()
+        self.__colr_land = ui.get_color_land()
+        self.__colr_sea = ui.get_color_sea()
         self.__layer = f"\tgmt coast -S{self.__colr_sea}  -EID+g{self.__colr_land} -Glightsteelblue2 -TdjTR+l,,,N+o0.5c -Ve\n"
         self.coast = {
             "Type": "coast",
@@ -223,7 +235,7 @@ class Layer(FileName, Coordinate, Projection):
         return self.coast
 
     def grdimage_download(self):
-        if self.__grd_masking == True:
+        if self.__grd_masking is True:
             command = "clip"
             replace = "-Sb0/NaN"
         else:
@@ -237,19 +249,20 @@ class Layer(FileName, Coordinate, Projection):
             text=True,
             shell={os.name == "posix"},
             capture_output=True,
+            check=True,
         )
         infow = dl_gridfile.stdout
         print(infow)
 
     def layer_grdimage(self):
-        self.__grd_resolution, res = ui.grdimage_resolution()
-        self.__grd_cpt_color = ui.grdimage_color_palette()
-        self.__grd_shading, shade = ui.grdimage_shading()
-        self.__grd_masking = ui.grdimage_mask()
+        self.__grd_resolution, res = ui.get_grdimage_resolution()
+        self.__grd_cpt_color = ui.show_grdimage_color_palette()
+        self.__grd_shading_code, shade = ui.get_grdimage_shading()
+        self.__grd_masking = ui.get_grdimage_mask()
         self.grdimage_download()
         self.__grd_color_bar, colorbar = self.grdimage_colorbar()
 
-        self.__layer = f"\tgmt grd2cpt {self.__grd_file} -C{self.__grd_cpt_color} -Z\n\tgmt grdimage {self.__grd_file} {self.__grd_shading} -C{self.__grd_cpt_color} -Q -Ve\n{self.__grd_color_bar}"
+        self.__layer = f"\tgmt grd2cpt {self.__grd_file} -C{self.__grd_cpt_color} -Z\n\tgmt grdimage {self.__grd_file} {self.__grd_shading_code} -C{self.__grd_cpt_color} -Q -Ve\n{self.__grd_color_bar}"
 
         self.grdimage = {
             "Type": "earth relief",
@@ -264,11 +277,15 @@ class Layer(FileName, Coordinate, Projection):
 
     def grdimage_colorbar_interval(self, command):
         grdinfo = subprocess.run(
-            command, shell={os.name == "posix"}, capture_output=True, text=True
+            command,
+            shell={os.name == "posix"},
+            capture_output=True,
+            text=True,
+            check=True,
         )
         grdinfo = grdinfo.stdout.split()
-        elevmax = int(grdinfo[5])
-        elevmin = int(grdinfo[4])
+        elevmax = int(float(grdinfo[5]))
+        elevmin = int(float(grdinfo[4]))
         total_elev = elevmax + abs(elevmin)
 
         if total_elev in range(5000, 20000):
@@ -329,7 +346,7 @@ class Layer(FileName, Coordinate, Projection):
         return colorbar, askcolorbar
 
     def layer_contour(self):
-        self.__ctr_interval, self.__reso = ui.contour_interval(self.map_scale)
+        self.__ctr_interval, self.__reso = ui.get_contour_interval(self.map_scale)
         self.__layer = f"\tgmt grdcontour @earth_relief_{self.__reso} -A{self.__ctr_interval * 4}+ap+u\ m -C{self.__ctr_interval} -Wathin,gray50 -Wcfaint,gray70 -LP -Ve\n"
         self.contour = {
             "Type": "contour",
@@ -351,19 +368,19 @@ class Layer(FileName, Coordinate, Projection):
         return self.indo_tecto
 
     def layer_earthquake(self):
-        self.__source = ui.eq_catalog_source()
+        self.__source = ui.get_eq_catalog_source()
         if self.__source != "cancel":
             self.eq_file = os.path.join(
                 self.dir_output_path,
                 f"{self.name}_{self.__source}-catalog.txt",
             )
-            self.__scaler = float(self.map_size) * 0.0005
+            self.__scaler = float(self.map_size) * 0.0001
             if self.__source != "From user":
-                USAGE = "earthquake catalog"
+                req_type = "earthquake catalog"
 
-                self.__eq_date = ui.date_start_end(USAGE)
-                self.__eq_mag = ui.eq_mag_range(USAGE)
-                self.__eq_depth = ui.eq_depth_range(USAGE)
+                self.__eq_date = ui.get_date_start_end(req_type)
+                self.__eq_mag = ui.get_eq_mag_range(req_type)
+                self.__eq_depth = ui.get_eq_depth_range(req_type)
             match self.__source:
                 case "USGS":
                     self.__lonlatdepmag = f"$3,$2,$4,$5*$5*{str(self.__scaler)}"
@@ -384,12 +401,12 @@ class Layer(FileName, Coordinate, Projection):
                         self.__eq_depth,
                     )
                 case "From user":
-                    self.eq_file = ui.load_eq()
-                    self.column = ui.column_order(self.eq_file)
+                    self.eq_file = ui.get_eq_directory()
+                    self.column = ui.get_column_order(self.eq_file)
                     self.__eq_date = ("-", "-", "-")
                     self.__eq_mag = (self.column[4][3], self.column[4][4])
                     self.__eq_depth = (self.column[4][1], self.column[4][2])
-                    self.__lonlatdepmag = f"${self.column[0]},${self.column[1]},$   {self.column[2]},${self.column[3]}*${self.column[3]*{str   (self.__scaler)}},"
+                    self.__lonlatdepmag = f"${self.column[0]},${self.column[1]},${self.column[2]},${self.column[3]}*${self.column[3]*{str(self.__scaler)}},"
             if os.name == "posix":
                 self.__layer = (
                     "\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N\n"
@@ -423,11 +440,11 @@ class Layer(FileName, Coordinate, Projection):
         return self.earthquake
 
     def layer_focmec(self):
-        fm = "focal mechanism"
+        req_type = "focal mechanism"
         self.fm_file = os.path.join(self.dir_output_path, f"{self.name}_gcmt.txt")
-        self.__gcmt_date = ui.date_start_end(fm)
-        self.__gcmt_mag = ui.eq_mag_range(fm)
-        self.__gcmt_depth = ui.eq_depth_range(fm)
+        self.__gcmt_date = ui.get_date_start_end(req_type)
+        self.__gcmt_mag = ui.get_eq_mag_range(req_type)
+        self.__gcmt_depth = ui.get_eq_depth_range(req_type)
         self.__scaler = float(self.map_size) * 0.02
         self.__layer = "\tgmt makecpt -Cred,green,blue -T0,70,150,10000 -N -Ve\n\tgmt meca {} -Sd{}c+f0 -C -W01p,gray50 -Ve\n".format(
             self.fm_file,
@@ -484,10 +501,10 @@ class Layer(FileName, Coordinate, Projection):
         else:
             self.inset_size = map_height / 3
         self.inset_coord = (x1, x2, y1, y2)
-        self.inset_R = f"-R{self.inset_coord[0]}/{self.inset_coord[1]}/{self.inset_coord[2]}/{self.inset_coor[3]}"
-        self.inset_just = ui.inset_loc()
+        self.inset_R = f"-R{self.inset_coord[0]}/{self.inset_coord[1]}/{self.inset_coord[2]}/{self.inset_coord[3]}"
+        self.inset_just = ui.get_inset_loc()
         self.inset_offset = self.size * 0.01
-        self.rectangle = f">\n{self.x1}\t{self.y1}\n{self.x1}\t{self.y2}\n>\n{self.x1}\t{self.y2}\n{self.x2}\{self.y2}\n>\n{self.x2}\t{self.y2}\n{self.x2}\t{self.y1}\n>\n{self.x2}\t{self.y1}\n{self.x1}\t{self.y1}"
+        self.rectangle = f">\n{self.x1}\t{self.y1}\n{self.x1}\t{self.y2}\n>\n{self.x1}\t{self.y2}\n{self.x2}\t{self.y2}\n>\n{self.x2}\t{self.y2}\n{self.x2}\t{self.y1}\n>\n{self.x2}\t{self.y1}\n{self.x1}\t{self.y1}"
         utils.file_writer(
             "w", f"rect_{self.name}.txt", self.rectangle, self.dir_output_path
         )
@@ -548,8 +565,9 @@ class MainMap(Layer):
 
     def __init__(self):
         Layer.__init__(self)
+        self.__columns = None
 
-    def general_info(self):
+    def get_general_info(self):
         """Printing basic map parameter
         Output location; File name; Projection, Map width and Coordinate"""
         if self.proj == "M":
@@ -565,79 +583,180 @@ class MainMap(Layer):
 """
         print(general)
 
-    def layer_info(self):
-        """Prints information about the layers."""
-        layer_print = copy.deepcopy(self.layers)
+    def print_1_layer(self, layer_print: dict):
+        print(f"  {lyr1}")
+        print((80 * "-"))
+        for key, val in layer_print[lyr1].items():
+            print(f"  {key:<10}: {val}")
 
-        # Remove the 'script' key from each layer
+    def print_2_layer(self, layer_print: dict):
+        dkeys = list(zip_longest(layer_print[lyr1], layer_print[lyr2], fillvalue=" "))
+        dvalues = list(
+            zip_longest(
+                layer_print[lyr1].values(),
+                layer_print[lyr2].values(),
+                fillvalue=" ",
+            )
+        )
+        print(" ", (21 * " ").join(self.__columns))
+        print((80 * "-"))
+        for l1, l2 in zip(dkeys, dvalues):
+            print(f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15}")
+
+    def print_3_layer(self, layer_print: dict):
+        dkeys = list(
+            zip_longest(
+                layer_print[lyr1],
+                layer_print[lyr2],
+                layer_print[lyr3],
+                fillvalue=" ",
+            )
+        )
+
+        dvalues = list(
+            zip_longest(
+                layer_print[lyr1].values(),
+                layer_print[lyr2].values(),
+                layer_print[lyr3].values(),
+                fillvalue=" ",
+            )
+        )
+
+        print(" ", (21 * " ").join(self.__columns))
+        print((80 * "-"))
+        for l1, l2 in zip(dkeys, dvalues):
+            print(
+                f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15} {l1[2]:<10}: {l2[2]:<15} "
+            )
+
+    def print_4_layer(self, layer_print: dict):
+        dkeys = list(
+            zip_longest(
+                layer_print[lyr1],
+                layer_print[lyr2],
+                layer_print[lyr3],
+                layer_print[lyr4],
+                fillvalue=" ",
+            )
+        )
+
+        dvalues = list(
+            zip_longest(
+                layer_print[lyr1].values(),
+                layer_print[lyr2].values(),
+                layer_print[lyr3].values(),
+                layer_print[lyr4].values(),
+                fillvalue=" ",
+            )
+        )
+
+        print(" ", (21 * " ").join(self.__columns[0:3]))
+        print((80 * "-"))
+        for l1, l2 in zip(dkeys, dvalues):
+            print(
+                f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15} {l1[2]:<10}: {l2[2]:<15} "
+            )
+        print((80 * "-"))
+        print(" ", (21 * " ").join(self.__columns[3:4]))
+        print((80 * "-"))
+        for l1, l2 in zip(dkeys, dvalues):
+            print(f"  {l1[3]:<10}: {l2[3]:<15} ")
+
+    def print_5_layer(self, layer_print: dict):
+        dkeys = list(
+            zip_longest(
+                layer_print[lyr1],
+                layer_print[lyr2],
+                layer_print[lyr3],
+                layer_print[lyr4],
+                layer_print[lyr5],
+                fillvalue=" ",
+            )
+        )
+
+        dvalues = list(
+            zip_longest(
+                layer_print[lyr1].values(),
+                layer_print[lyr2].values(),
+                layer_print[lyr3].values(),
+                layer_print[lyr4].values(),
+                layer_print[lyr5].values(),
+                fillvalue=" ",
+            )
+        )
+
+        print(" ", (21 * " ").join(self.__columns[0:3]))
+        print((80 * "-"))
+        for l1, l2 in zip(dkeys, dvalues):
+            print(
+                f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15} {l1[2]:<10}: {l2[2]:<15} "
+            )
+        print((80 * "-"))
+        print(" ", (21 * " ").join(self.__columns[3:5]))
+        print((80 * "-"))
+        for l1, l2 in zip(dkeys, dvalues):
+            print(f"  {l1[3]:<10}: {l2[3]:<15} {l1[4]:<10}: {l2[4]:<15} ")
+
+    def print_6_layer(self, layer_print: dict):
+        dkeys = list(
+            zip_longest(
+                layer_print[lyr1],
+                layer_print[lyr2],
+                layer_print[lyr3],
+                layer_print[lyr4],
+                layer_print[lyr5],
+                layer_print[lyr6],
+                fillvalue=" ",
+            )
+        )
+
+        dvalues = list(
+            zip_longest(
+                layer_print[lyr1].values(),
+                layer_print[lyr2].values(),
+                layer_print[lyr3].values(),
+                layer_print[lyr4].values(),
+                layer_print[lyr5].values(),
+                layer_print[lyr6].values(),
+                fillvalue=" ",
+            )
+        )
+
+        print(" ", (21 * " ").join(self.__columns[0:3]))
+        print((80 * "-"))
+        for l1, l2 in zip(dkeys, dvalues):
+            print(
+                f"  {l1[0]:<10}: {l2[0]:<15} {l1[1]:<10}: {l2[1]:<15} {l1[2]:<10}: {l2[2]:<15} "
+            )
+        print((80 * "-"))
+        print(" ", (21 * " ").join(self.__columns[3:5]))
+        print((80 * "-"))
+        for l1, l2 in zip(dkeys, dvalues):
+            print(
+                f"  {l1[3]:<10}: {l2[3]:<15} {l1[4]:<10}: {l2[4]:<15} {l1[5]:<10}: {l2[5]:<15} "
+            )
+
+    def get_layer_info(self):
+        """Printing the layer info"""
+
+        layer_print = copy.deepcopy(self.layers)
         for layer in range(1, len(layer_print) + 1):
             del layer_print[f"Layer {layer}"]["script"]
-
         self.__columns = list(layer_print.keys())
         print("  LAYERS  ".center(80, "="))
         print("")
 
-        # Create a mapping of layer count to print function
-        layer_count = len(layer_print)
-        print_function = self._get_print_function(layer_count)
-
-        if print_function:
-            print_function(layer_print)
-
+        match len(layer_print):
+            case 1:
+                self.print_1_layer(layer_print)
+            case 2:
+                self.print_2_layer(layer_print)
+            case 3:
+                self.print_3_layer(layer_print)
+            case 4:
+                self.print_4_layer(layer_print)
+            case 5:
+                self.print_5_layer(layer_print)
+            case 6:
+                self.print_6_layer(layer_print)
         print((80 * "="))
-
-    def _get_print_function(self, layer_count):
-        """Returns the appropriate print function based on the number of layers."""
-        if layer_count == 1:
-            return self._print_one_layer
-        elif layer_count == 2:
-            return self._print_two_layers
-        elif layer_count == 3:
-            return self._print_three_layers
-        elif layer_count == 4:
-            return self._print_four_layers
-        elif layer_count == 5:
-            return self._print_five_layers
-        elif layer_count == 6:
-            return self._print_six_layers
-        return None
-
-    def _print_one_layer(self, layer_print):
-        print("  Layer 1")
-        print((80 * "-"))
-        for key, val in layer_print["Layer 1"].items():
-            print(f"  {key:<10}: {val}")
-
-    def _print_two_layers(self, layer_print):
-        self._print_multiple_layers(layer_print, 2)
-
-    def _print_three_layers(self, layer_print):
-        self._print_multiple_layers(layer_print, 3)
-
-    def _print_four_layers(self, layer_print):
-        self._print_multiple_layers(layer_print, 4)
-
-    def _print_five_layers(self, layer_print):
-        self._print_multiple_layers(layer_print, 5)
-
-    def _print_six_layers(self, layer_print):
-        self._print_multiple_layers(layer_print, 6)
-
-    def _print_multiple_layers(self, layer_print, layer_count):
-        dkeys = list(
-            zip_longest(
-                *[layer_print[f"Layer {i+1}"] for i in range(layer_count)],
-                fillvalue=" ",
-            )
-        )
-        dvalues = list(
-            zip_longest(
-                *[layer_print[f"Layer {i+1}"].values() for i in range(layer_count)],
-                fillvalue=" ",
-            )
-        )
-
-        print(" ", (21 * " ").join(self.__columns[:layer_count]))
-        print((80 * "-"))
-        for l1, l2 in zip(dkeys, dvalues):
-            print("  ".join(f"{l1[i]:<10}: {l2[i]:<15}" for i in range(layer_count)))

@@ -1,9 +1,11 @@
-from gmt_pyplotter import utils
-from gmt_pyplotter.data.color_list import unique_color, palette_name
-import os.path, re, sys
 from cmd import Cmd
 from datetime import date
 from tkinter.filedialog import askopenfilename, askdirectory
+import os.path
+import re
+import sys
+from gmt_pyplotter import utils
+from gmt_pyplotter.data.color_list import unique_color, palette_name
 
 
 def separator(func):
@@ -55,7 +57,7 @@ def add_gawk_path():
     return real_gawk_path
 
 
-def save_loc():
+def get_save_loc():
     print("\n  Select the output (figure, gmt script & another data) directory ..\n")
     input("  Press 'enter' to open browsing window..")
     while True:
@@ -76,9 +78,9 @@ def save_loc():
                     try:
                         print(" End of the program ".center(80, "="))
                         sys.exit(130)
-                    except SystemExit:
-                        os._exit(130)
-                        raise
+                    except KeyboardInterrupt:
+                        raise SystemExit
+
     if os.name == "nt":
         output_path = output_path.replace("/", "\\")
     if len(output_path) < 59:
@@ -89,7 +91,7 @@ def save_loc():
     return output_path
 
 
-def file_out_format():
+def get_file_out_format():
     print(
         """  List supported image ouput format in GMT:
   1. |\033[38;5;81mbmp\033[00m| Microsoft Bit Map
@@ -142,29 +144,28 @@ def file_out_format():
     return file_format
 
 
-def file_name(output_dir, file_format):
+def get_file_name(output_dir, file_format):
     while True:
-        input_file_name = input("  Name of the map: ")
+        input_file_name = input("  Name of the map: ") or "untitled_map"
         input_file_name = input_file_name.replace(" ", "_")
         path = os.path.join(output_dir, f"{input_file_name}.{file_format}")
         check_file = os.path.isfile(path)
 
-        if check_file == True:
-            try:
-                printe(
-                    f"    The '{input_file_name}.{file_format}' in output folder, already exist"
-                )
-                overwrite = input("    Overwrite the file (y/n) ? ")
-                if overwrite == "N" or overwrite == "n":
-                    print("    Choose another name")
-                    continue
-                elif overwrite == "Y" or overwrite == "y":
-                    print("\n    Map file will be overwrite!")
-                    printc(f"  Map will be save as {input_file_name}.{file_format}")
-                    break
-            except:
+        if check_file is True:
+            printe(
+                f"    The '{input_file_name}.{file_format}' in output folder, already exist"
+            )
+            overwrite = input("    Overwrite the file (y/n) ? ")
+            if overwrite.upper() in ["N", "NO"]:
+                print("    Choose another name")
                 continue
-                raise
+            if overwrite.upper() in ["Y", "YES"]:
+                print("\n    Map file will be overwrite!")
+                printc(f"  Map will be save as {input_file_name}{file_format}")
+                break
+            else:
+                printe(f"    '{overwrite}' is not valid input")
+
         else:
             printc(f"  Map will be save as {input_file_name}.{file_format}")
 
@@ -172,7 +173,7 @@ def file_name(output_dir, file_format):
     return input_file_name
 
 
-def input_projection():
+def get_projection():
     print("  Map Projection System (Press 'Enter' for default)")
     print("   (M) Mercator Cylindrical (default)")
     print("   (G) General perspective")
@@ -194,7 +195,7 @@ def input_projection():
     return proj
 
 
-def input_size():
+def get_map_width():
     print("  Map size represent the width of the map in centimeter (cm)")
     print("  The height will adjust to the coordinate boundary")
     print("  Default size = 20 cm")
@@ -208,11 +209,13 @@ def input_size():
             elif size < 0:
                 print("\033[2A")
                 printe("    Error, the map 'size' can not negative")
-            elif size > 0 and size < 5:
+                continue
+            elif 0 < size < 5:
                 print("\033[2A")
                 printe("    Error, the map 'size' too small")
+                continue
             else:
-                printc("  Map width is = {} cm".format(size))
+                printc(f"  Map width is = {size} cm")
                 break
         except ValueError:
             print("\033[2A")
@@ -222,7 +225,7 @@ def input_size():
     return size
 
 
-def input_country_id():
+def get_country_id():
     print("  Country ID is based on the ISO 3166 international standard")
     print(
         """  For example:
@@ -249,7 +252,7 @@ def input_country_id():
 ERROR_NUM = "    Error, input number only"
 
 
-def input_coord_x():
+def get_coord_x():
     def get_boundary(prompt, default):
         while True:
             try:
@@ -275,7 +278,7 @@ def input_coord_x():
             printe("\n    Western boundary must be less than eastern boundary\n")
 
 
-def input_coord_y():
+def get_coord_y():
     def get_boundary(prompt, default):
         while True:
             try:
@@ -301,51 +304,50 @@ def input_coord_y():
             printe("\n    Southern boundary must be less than northern boundary\n")
 
 
-def color_rgb_chart():
+def show_color_rgb_chart():
     display_rgb_chart = input("  Display the 'Color Chart' from GMT (y/n) ?:  ")
-    match display_rgb_chart.upper():
-        case "Y" | "YES":
-            utils.pictureshow(
-                os.path.join(os.path.dirname(__file__), "data", "GMT_RGBchart.png")
-            )
+    if display_rgb_chart.upper() in ["Y", "YES"]:
+        utils.pictureshow(
+            os.path.join(os.path.dirname(__file__), "data", "GMT_RGBchart.png")
+        )
 
 
-def color_land():
+def get_color_land():
     print("  press 'enter' for default color (seagreen2)")
     while True:
-        colr_land = str(input("  Choose the color of the land :") or "seagreen2")
-        if colr_land.upper() not in unique_color:
+        color_land = str(input("  Choose the color of the land :") or "seagreen2")
+        if color_land.upper() not in unique_color:
             print("\033[2A")
-            printe(f"    '{colr_land}' is not a valid color name in GMT")
-            color_rgb_chart()
+            printe(f"    '{color_land}' is not a valid color name in GMT")
+            show_color_rgb_chart()
 
         else:
             break
 
-    return colr_land.lower()
+    return color_land.lower()
 
 
-def color_sea():
+def get_color_sea():
     print("  press 'enter' for default color (lightcyan)")
     while True:
-        colr_sea = str(input("  Choose the color of the sea : ") or "lightcyan")
-        if colr_sea.upper() not in unique_color:
+        color_sea = str(input("  Choose the color of the sea : ") or "lightcyan")
+        if color_sea.upper() not in unique_color:
             print("\033[2A")
-            printe(f"    '{colr_sea}' is not a valid color name in GMT")
-            color_rgb_chart()
+            printe(f"    '{color_sea}' is not a valid color name in GMT")
+            show_color_rgb_chart()
 
         else:
             break
-    return colr_sea
+    return color_sea
 
 
-def color_focmec():
+def get_color_focmec():
     print("  press 'enter' for default color (red)")
-    colr_fm = str(input("  Choose the color of the beach ball : ") or "red")
-    return colr_fm
+    color_fm = str(input("  Choose the color of the beach ball : ") or "red")
+    return color_fm
 
 
-def contour_interval(mapscale):
+def get_contour_interval(mapscale):
     """Input the contour interval and return the used interval value and earth relief resolution"""
     match mapscale:
         case num if num < 2778:
@@ -396,49 +398,48 @@ def contour_interval(mapscale):
     return interval, resolution
 
 
-def grdimage_color_palette():
+def show_grdimage_color_palette():
     display_cpt = (
         input("  Display the 'Color Palette Tables' from GMT (y/n) ?:  ").strip() or "n"
     )
-    match display_cpt.upper():
-        case "Y" | "YES":
-            utils.pictureshow(
-                os.path.join(
-                    os.path.dirname(__file__), "data", "GMT_Color_Palette_Tables.png"
-                )
+    if display_cpt.upper() in ["Y", "YES"]:
+        utils.pictureshow(
+            os.path.join(
+                os.path.dirname(__file__), "data", "GMT_Color_Palette_Tables.png"
             )
+        )
 
     print("\n  List of CPT name:")
     pl = Cmd()
     pl.columnize(palette_name, displaywidth=80)
 
     while True:
-        colr_cpt = input("  Choose the CPT:  ").lower()
-        if colr_cpt in palette_name:
-            printc(f"  '{colr_cpt}' is used for the color palette table")
+        color_cpt = input("  Choose the CPT:  ").lower()
+        if color_cpt in palette_name:
+            printc(f"  '{color_cpt}' is used for the color palette table")
             break
-        elif colr_cpt not in palette_name:
+        elif color_cpt not in palette_name:
             print("\033[2A")
-            printe(f"    '{colr_cpt}' is not a valid cpt name in GMT")
+            printe(f"    '{color_cpt}' is not a valid cpt name in GMT")
             continue
-        if colr_cpt == "jet":
-            colr_cpt = "matlab/jet"
-        if colr_cpt == "paired" or colr_cpt == "panoply":
-            printe(f"    '{colr_cpt}' is not not supported")
+        if color_cpt == "jet":
+            color_cpt = "matlab/jet"
+        if color_cpt == "paired" or color_cpt == "panoply":
+            printe(f"    '{color_cpt}' is not not supported")
 
-    return colr_cpt
+    return color_cpt
 
 
-def grdimage_shading():
+def get_grdimage_shading():
     while True:
         shade = input("  Shade the elevation model (y/n)?  ").strip() or "y"
         if shade.lower() == "y" or shade == "yes":
-            shading = "-I+d"
+            shading_code = "-I+d"
             shade = "Yes"
             printc("  The earth relief will shaded")
             break
         elif shade.lower() == "n" or shade == "no":
-            shading = ""
+            shading_code = ""
             shade = "No"
             printc("  The earth relief will not shaded")
             break
@@ -446,10 +447,10 @@ def grdimage_shading():
             print("\033[2A")
             printe(f"    '{shade}' is not a valid input..")
 
-    return shading, shade
+    return shading_code, shade
 
 
-def grdimage_resolution():
+def get_grdimage_resolution():
     while True:
         print("  Choose the image resolution")
         print(
@@ -495,15 +496,15 @@ def grdimage_resolution():
     return resolution, grd_res
 
 
-def grdimage_mask():
+def get_grdimage_mask():
     while True:
         mask = input("  Masking the sea surface (y/n)?  ").strip() or "y"
-        if mask.lower() == "y" or mask == "yes":
+        if mask.lower() in ["y", "yes"]:
 
             printc("  The sea surface will be masked")
             mask = True
             break
-        elif mask.lower() == "n" or mask == "no":
+        elif mask.lower() in ["n", "no"]:
 
             mask = False
             printc("  The sea surface will not be masked")
@@ -515,42 +516,42 @@ def grdimage_mask():
     return mask
 
 
-def date_start(req_type):
+def get_date_start(req_type: str):
     while True:
-        input_date_start = (
+        date_start = (
             input(
                 f"  Enter start date for the {req_type} \n(YYYYMMDD) for full date or\n(YYYY) for year only (1 Jan) :   "
             ).strip()
             or "2019"
         )
 
-        if not re.match(r"^\d*$", input_date_start):
+        if not re.match(r"^\d*$", date_start):
             print("\033[3A")
             printe(ERROR_NUM)
             continue
 
-        if len(input_date_start) not in [4, 8]:
+        if len(date_start) not in [4, 8]:
             print("\033[3A")
             printe("    Error, input 4 or 8 characters for the year or date!")
             continue
 
         try:
-            if len(input_date_start) == 4:
-                year_start = int(input_date_start)
+            if len(date_start) == 4:
+                year_start = int(date_start)
                 mo_start, day_start = 1, 1
             else:
-                year_start = int(input_date_start[:4])
-                mo_start = int(input_date_start[4:6])
-                day_start = int(input_date_start[6:])
+                year_start = int(date_start[:4])
+                mo_start = int(date_start[4:6])
+                day_start = int(date_start[6:])
 
-            input_date_start = date(year_start, mo_start, day_start)
+            date_start = date(year_start, mo_start, day_start)
 
-            if date.today() < input_date_start:
+            if date.today() < date_start:
                 print("\033[3A")
                 printe("    Start date cannot be in the future")
                 continue
 
-            printc(f"  Start date :  {input_date_start.strftime('%B %d, %Y')}")
+            printc(f"  Start date :  {date_start.strftime('%B %d, %Y')}")
             break
 
         except ValueError as error:
@@ -558,39 +559,39 @@ def date_start(req_type):
             printe(f"    Error, {error}!")
             continue
 
-    return input_date_start
+    return date_start
 
 
-def date_end(req_type):
+def get_date_end(req_type: str):
     while True:
-        input_date_end = (
+        date_end = (
             input(
                 f"  Enter end date for the {req_type} \n(YYYYMMDD) for full date or\n(YYYY) for year only (31 Dec) :  "
             ).strip()
             or "2023"
         )
 
-        if not re.match(r"^\d*$", input_date_end):
+        if not re.match(r"^\d*$", date_end):
             print("\033[3A")
             printe(ERROR_NUM)
             continue
 
-        if len(input_date_end) not in [4, 8]:
+        if len(date_end) not in [4, 8]:
             print("\033[3A")
             printe("    Error, input 4 or 8 characters for the year or date!")
             continue
 
         try:
-            if len(input_date_end) == 4:
-                year_end = int(input_date_end)
+            if len(date_end) == 4:
+                year_end = int(date_end)
                 mo_end, day_end = 12, 31
             else:
-                year_end = int(input_date_end[:4])
-                mo_end = int(input_date_end[4:6])
-                day_end = int(input_date_end[6:])
+                year_end = int(date_end[:4])
+                mo_end = int(date_end[4:6])
+                day_end = int(date_end[6:])
 
-            input_date_end = date(year_end, mo_end, day_end)
-            printc(f"  End date :  {input_date_end.strftime('%B %d, %Y')}")
+            date_end = date(year_end, mo_end, day_end)
+            printc(f"  End date :  {date_end.strftime('%B %d, %Y')}")
             break
 
         except ValueError as error:
@@ -598,14 +599,14 @@ def date_end(req_type):
             printe(f"    Error, {error}!")
             continue
 
-    return input_date_end
+    return date_end
 
 
-def date_start_end(*args):
-    req_type = args[0]
+def get_date_start_end(req_type: str):
+
     while True:
-        in_date_start = date_start(req_type)
-        in_date_end = date_end(req_type)
+        in_date_start = get_date_start(req_type)
+        in_date_end = get_date_end(req_type)
         delta = in_date_end - in_date_start
         days = delta.days
         if days <= 0:
@@ -619,7 +620,7 @@ def date_start_end(*args):
     return in_date_start, in_date_end, days
 
 
-def inset_loc():
+def get_inset_loc():
     while True:
         print("         Inset map plot location:          ")
         print(" __________________________________________ ")
@@ -680,7 +681,7 @@ def inset_loc():
     return justify, just_north, just_code
 
 
-def eq_mag_range(req_type):
+def get_eq_mag_range(req_type):
     DEFAULT = "  \x1B[3m(press 'enter' for default value)\x1b[0m  :   "
 
     def get_magnitude(prompt, default):
@@ -713,7 +714,7 @@ def eq_mag_range(req_type):
             printe("\n    The minimum magnitude must be lower than the maximum\n")
 
 
-def eq_depth_range(req_type):
+def get_eq_depth_range(req_type):
     DEFAULT = "  \x1B[3m(press 'enter' for default value)\x1b[0m  :   "
 
     def get_depth(prompt, default):
@@ -744,7 +745,7 @@ def eq_depth_range(req_type):
             printe("\n    Minimum depth must be lower than maximum\n")
 
 
-def eq_catalog_source():
+def get_eq_catalog_source():
     print("  Choose the earthquake catalog service: ")
     print("    1. USGS - NEIC PDE")
     print("    2. ISC Bulletin")
@@ -799,12 +800,7 @@ def eq_catalog_source():
     return eq_cata
 
 
-def eq_legend():
-    calculation = 10
-    return calculation
-
-
-def load_eq():
+def get_eq_directory():
     print("  Loading the earthquake data from user")
 
     eq_path = askopenfilename(
@@ -822,7 +818,8 @@ def load_eq():
     return eq_path
 
 
-def column_order(eq_path):
+def get_column_order(eq_path):
+    """User inputing column order for lon lat dep mag"""
 
     # file name, longitude, lattitude, magnitude, depth
     print("  column order separate with space and the first column start from 1")
@@ -836,21 +833,22 @@ def column_order(eq_path):
         eq_column_lat = eq_column_order[1]
         eq_column_dep = eq_column_order[2]
         eq_column_mag = eq_column_order[3]
-        col_check = eq_column_check(eq_path, eq_column_order)
-        if col_check[0] == "good":
-            break
-        else:
+        col_check = check_eq_column(eq_path, eq_column_order)
+        if col_check == "bad":
             print("\033[1A")
             printe("    The column order not match with the data")
+        else:
+            break
 
-    return eq_column_lon, eq_column_lat, eq_column_dep, eq_column_mag, col_check
+    return eq_column_lon, eq_column_lat, eq_column_dep, eq_column_mag
 
 
-def eq_column_check(eq_path, column_order):
-    print(eq_path, column_order)
-    with open(eq_path) as f:
+def check_eq_column(eq_path, order: list):
+    """Check every column if its match the data (lon, lat, depth, magnitude)"""
+    print(eq_path, order)
+    with open(eq_path, encoding="utf-8") as f:
         for columns in f:
-            lon = columns[{column_order[0]}]
+            lon = columns[{order[0]}]
             if lon < -180 or lon > 180:
                 print("\033[1A")
                 printe(
@@ -859,7 +857,7 @@ def eq_column_check(eq_path, column_order):
                 status = "bad"
                 break
 
-            lat = columns[{column_order[1]}]
+            lat = columns[{order[1]}]
             if lat < -90 or lat > 90:
                 print("\033[1A")
                 printe(
@@ -867,8 +865,8 @@ def eq_column_check(eq_path, column_order):
                 )
                 status = "bad"
                 break
-            eq_data_dep = []
-            depth = columns[{column_order[2]}]
+
+            depth = columns[{order[2]}]
             if depth < 0 or depth > 1000:
                 print("\033[1A")
                 printe(
@@ -876,10 +874,8 @@ def eq_column_check(eq_path, column_order):
                 )
                 status = "bad"
                 break
-            else:
-                eq_data_dep.append(depth)
-            eq_data_mag = []
-            mag = columns[{column_order[3]}]
+
+            mag = columns[{order[3]}]
             if mag < 0 or mag > 10:
                 print("\033[1A")
                 printe(
@@ -887,13 +883,6 @@ def eq_column_check(eq_path, column_order):
                 )
                 status = "bad"
                 break
-            else:
-                eq_data_mag.append(mag)
-                status = "good"
-    return (
-        status,
-        min(eq_data_dep),
-        max(eq_data_dep),
-        min(eq_data_mag),
-        max(eq_data_mag),
-    )
+
+            status = "good"
+    return status

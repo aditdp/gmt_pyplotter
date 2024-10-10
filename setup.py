@@ -19,7 +19,12 @@ setup(
             "*log",
         ]
     },
-    install_requires=["setuptools", "Pillow", "cursor"],
+    install_requires=[
+        "setuptools",
+        "Pillow",
+        "cursor",
+        "show-in-file-manager",
+    ],
     include_package_data=True,
-    entry_points={"console_scripts": ["gmt_pyplotter = gmt_pyplotter.__main__:main"]},
+    entry_points={"console_scripts": ["gmt_pyplotter = gmt_pyplotter.main:main"]},
 )

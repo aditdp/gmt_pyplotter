@@ -2,7 +2,7 @@ import os, shutil, sys, subprocess, time, cursor
 from datetime import datetime, timedelta
 from urllib.request import urlretrieve, urlopen
 from PIL import Image
-
+from showinfm import show_in_file_manager
 
 match os.name:
     case "posix":
@@ -36,21 +36,19 @@ def is_connected():
     time.sleep(0.25)
     cursor.show()
     try:
-        urlopen("http://www.google.com", timeout=5)
+        urlopen("https://www.google.com", timeout=5)
         return True
-    except:
-        print("    No internet connection")
+    except TimeoutError("    No internet connection"):
         return False
-        raise
 
 
 def app_usage_log(*args):
     log_path = os.path.join(os.path.dirname(__file__), "app_usage.log")
     if os.path.isfile(log_path):
 
-        with open(log_path, "r") as original:
+        with open(log_path, "r", encoding="utf-8") as original:
             temp = original.read()
-        with open(log_path, "w") as new:
+        with open(log_path, "w", encoding="utf-8") as new:
 
             new.write(
                 f"""{datetime.now()}
@@ -62,7 +60,7 @@ def app_usage_log(*args):
 """
             )
     else:
-        with open(log_path, "w") as new:
+        with open(log_path, "w", encoding="utf-8") as new:
 
             new.write(
                 f"""{datetime.now()}
@@ -76,7 +74,7 @@ def app_usage_log(*args):
 
 def system_check():
     log_path = os.path.join(os.path.dirname(__file__), "app_usage.log")
-    with open(log_path, "r") as file:
+    with open(log_path, "r", encoding="utf-8") as file:
         file.seek(0)
         last_time = file.readline().strip()
         print(last_time)
@@ -118,7 +116,7 @@ def check_terminal_size():
         if current_columns > 80 and current_lines > 30:
             cursor.show()
             break
-        elif current_columns < 80 and current_lines > 30:
+        if current_columns < 80 and current_lines > 30:
             print_terminal_size("resize the terminal width > 80 columns")
 
         elif current_columns > 80 and current_lines < 30:
@@ -137,7 +135,7 @@ def file_writer(*args):
     output_dir = args[3]
     print(layer)
 
-    with open(os.path.join(output_dir, script_name), flag) as file:
+    with open(os.path.join(output_dir, script_name), flag, encoding="utf-8") as file:
         file.write(layer)
 
 
@@ -164,7 +162,7 @@ def gcmt_downloader(*args):
     print("data acquired..")
     # input("press any key to continue..")
     print(data_gcmt)
-    with open(fm_file, "w") as file:
+    with open(fm_file, "w", encoding="utf-8") as file:
         file.write(data_gcmt)
     print("done..")
 
@@ -216,7 +214,7 @@ def isc_downloader(*args):
     print("data acquired..")
     # input("press any key to continue..")
     print(data_isc)
-    with open(isc_cata_file, "w") as file:
+    with open(isc_cata_file, "w", encoding="utf-8") as file:
         file.write(data_isc)
     print("done..")
 
@@ -232,7 +230,13 @@ def gmt_execute(name, output_dir):
             os.chdir(output_dir)
             command = f"{name}.bat"
 
-    msg_from_gmt = subprocess.run(command, shell=SHELL, capture_output=True, text=True)
+    msg_from_gmt = subprocess.run(
+        command,
+        shell=SHELL,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if msg_from_gmt.stderr:
         finalization_bar("fail")
         print(
@@ -240,11 +244,8 @@ def gmt_execute(name, output_dir):
         )
         print("GMT script failed to run..")
         closing()
-        try:
-            sys.exit(130)
-        except SystemExit:
-            os._exit(130)
-            raise
+
+        sys.exit(130)
 
 
 def loading_bar(iteration, total, bar_length=73):
@@ -541,3 +542,21 @@ def logo_brin(*args):
 def pictureshow(path):
     img = Image.open(path)
     img.show()
+
+
+def show_output_image_and_directory(path):
+    show_in_file_manager(path)
+    try:
+        pictureshow(path)
+    except IOError:
+        try:
+            match sys.platform:
+                case "win32":
+                    subprocess.Popen(path, shell=True)
+
+                case "darwin":
+                    subprocess.Popen(["open", "-R", path], shell=True)
+                case "linux":
+                    subprocess.Popen(f"xdg-open {path}", shell=True)
+        except SyntaxError:
+            print("    Cannot show the map..")
