@@ -3,9 +3,13 @@ import os
 import copy
 import subprocess
 import cursor
-from gmt_pyplotter import user_input as ui
-from gmt_pyplotter.user_input import printc, printe
-from gmt_pyplotter import utils
+
+# from gmt_pyplotter import user_input as ui
+# from gmt_pyplotter.user_input import printc, printe
+# from gmt_pyplotter import utils
+import user_input as ui
+from user_input import printc, printe
+import utils
 
 
 class FileName:
@@ -33,54 +37,24 @@ class FileName:
 
 class Coordinate:
     def __init__(self):
-        self.bound_x1, self.bound_x2 = ui.get_coord_x()
-        self.bound_y1, self.bound_y2 = ui.get_coord_y()
+        self.x1, self.x2 = ui.get_coord_x()
+        self.y1, self.y2 = ui.get_coord_y()
+        self.width = abs(self.x2 - self.x1)
+        self.height = abs(self.y2 - self.y1)
 
     def mid_x(self):
-        return (self.bound_x2 + self.bound_x1) / 2
+        return (self.x2 + self.x1) / 2
 
     def mid_y(self):
-        return (self.bound_y2 + self.bound_y1) / 2
-
-    @property
-    def x1(self):
-        return self.bound_x1
-
-    @x1.setter
-    def x1(self, value: float):
-        self.bound_x1 = value
-
-    @property
-    def x2(self):
-        return self.bound_x2
-
-    @x2.setter
-    def x2(self, value: float):
-        self.bound_x2 = value
-
-    @property
-    def y1(self):
-        return self.bound_y1
-
-    @y1.setter
-    def y1(self, value: float):
-        self.bound_y1 = value
-
-    @property
-    def y2(self):
-        return self.bound_y2
-
-    @y2.setter
-    def y2(self, value: float):
-        self.bound_y2 = value
+        return (self.y2 + self.y1) / 2
 
     @property
     def boundary(self):
-        return [self.bound_x1, self.bound_x2, self.bound_y1, self.bound_y2]
+        return [self.x1, self.x2, self.y1, self.y2]
 
     @property
     def coord_script(self):
-        return f"-R{self.bound_x1}/{self.bound_x2}/{self.bound_y1}/{self.bound_y2}"
+        return f"-R{self.x1}/{self.x2}/{self.y1}/{self.y2}"
 
 
 class Projection:
@@ -120,7 +94,7 @@ class Layer(FileName, Coordinate, Projection):
         Projection.__init__(self)
         utils.screen_clear()
         MainMap.get_general_info(self)
-
+        self.map_scale_factor = (self.width * 111.1) / (self.size * 0.0001)
         print("  Adding layer for main map..\n")
         self.layers = dict()
         layer = 1
@@ -205,12 +179,6 @@ class Layer(FileName, Coordinate, Projection):
         return user_layer
 
     @property
-    def map_scale(self):
-        self.width = self.bound_x2 - self.bound_x1
-        self.map_scale_factor = (self.width * 111.1) / (self.size * 0.0001)
-        return int(self.map_scale_factor)
-
-    @property
     def layer_base(self):
         self.__layer = f"gmt begin {self.name} {self.output_format} \n\tgmt basemap {self.coord_script} {self.proj_script} -Ba -TdjTR+l,,,N+o0.5c -Ve\n"
 
@@ -222,13 +190,13 @@ class Layer(FileName, Coordinate, Projection):
         return self.base_script, self.__layer
 
     def layer_coast(self):
-        self.__colr_land = ui.get_color_land()
-        self.__colr_sea = ui.get_color_sea()
-        self.__layer = f"\tgmt coast -S{self.__colr_sea}  -EID+g{self.__colr_land} -Glightsteelblue2 -TdjTR+l,,,N+o0.5c -Ve\n"
+        self.__color_land = ui.get_color("land", "seagreen2")
+        self.__color_sea = ui.get_color("sea", "lightcyan")
+        self.__layer = f"\tgmt coast -S{self.__color_sea}  -EID+g{self.__color_land} -Glightsteelblue2 -TdjTR+l,,,N+o0.5c -Ve\n"
         self.coast = {
             "Type": "coast",
-            "Land color": self.__colr_land,
-            "Sea color": self.__colr_sea,
+            "Land color": self.__color_land,
+            "Sea color": self.__color_sea,
             "script": self.__layer,
         }
 
@@ -256,7 +224,7 @@ class Layer(FileName, Coordinate, Projection):
 
     def layer_grdimage(self):
         self.__grd_resolution, res = ui.get_grdimage_resolution()
-        self.__grd_cpt_color = ui.show_grdimage_color_palette()
+        self.__grd_cpt_color = ui.get_grdimage_color_palette()
         self.__grd_shading_code, shade = ui.get_grdimage_shading()
         self.__grd_masking = ui.get_grdimage_mask()
         self.grdimage_download()
@@ -346,7 +314,9 @@ class Layer(FileName, Coordinate, Projection):
         return colorbar, askcolorbar
 
     def layer_contour(self):
-        self.__ctr_interval, self.__reso = ui.get_contour_interval(self.map_scale)
+        self.__ctr_interval, self.__reso = ui.get_contour_interval(
+            self.map_scale_factor
+        )
         self.__layer = f"\tgmt grdcontour @earth_relief_{self.__reso} -A{self.__ctr_interval * 4}+ap+u\ m -C{self.__ctr_interval} -Wathin,gray50 -Wcfaint,gray70 -LP -Ve\n"
         self.contour = {
             "Type": "contour",
@@ -357,12 +327,27 @@ class Layer(FileName, Coordinate, Projection):
         return self.contour
 
     def layer_indo_tecto(self):
-        fault = os.path.join(os.path.dirname(__file__), "data", "fault_sukamto2011")
-        self.__layer = f"\tgmt  plot {fault} -W1p,black,solid -Sf+1i/0.2i+l+t -Ve\n"
+
+        map_scale = lambda map_scale: (
+            "large" if self.width or self.height > 10 else "small"
+        )
+        source = ui.get_tecto_source(map_scale)
+        fault = os.path.join(
+            os.path.dirname(__file__),
+            "data",
+            f"{(source.replace(', ','')).lower()}.txt",
+        )
+        color = ui.get_color("Tectonic Line", "black")
+        if source == "Sukamto, 2011":
+            self.__layer = (
+                f"\tgmt  plot {fault} -W1p,{color},solid -Sf+1i/0.2i+l+t -Ve\n"
+            )
+        else:
+            self.__layer = f"\tgmt  plot {fault} -W1p,{color},solid -Ve\n"
         self.indo_tecto = {
             "Type": "tectonic",
-            "Source": "Sukamto, 2011",
-            "Color": "black",
+            "Source": source,
+            "Color": "color",
             "script": self.__layer,
         }
         return self.indo_tecto

@@ -4,8 +4,11 @@ from tkinter.filedialog import askopenfilename, askdirectory
 import os.path
 import re
 import sys
-from gmt_pyplotter import utils
-from gmt_pyplotter.data.color_list import unique_color, palette_name
+
+# from gmt_pyplotter import utils
+# from gmt_pyplotter.data.color_list import unique_color, palette_name
+import utils
+from data.color_list import unique_color, palette_name
 
 
 def separator(func):
@@ -249,9 +252,6 @@ def get_country_id():
     return f"-R{country_id}"
 
 
-ERROR_NUM = "    Error, input number only"
-
-
 def get_coord_x():
     def get_boundary(prompt, default):
         while True:
@@ -312,74 +312,44 @@ def show_color_rgb_chart():
         )
 
 
-def get_color_land():
-    print("  press 'enter' for default color (seagreen2)")
+def get_color(use: str, default: str):
+    print(f"  press 'enter' for default color ({default})")
     while True:
-        color_land = str(input("  Choose the color of the land :") or "seagreen2")
-        if color_land.upper() not in unique_color:
+        color = str(input(f"  Choose the color of the {use} :") or f"{default}")
+        if color.upper() not in unique_color:
             print("\033[2A")
-            printe(f"    '{color_land}' is not a valid color name in GMT")
+            printe(f"    '{color}' is not a valid color name in GMT")
             show_color_rgb_chart()
 
         else:
             break
 
-    return color_land.lower()
-
-
-def get_color_sea():
-    print("  press 'enter' for default color (lightcyan)")
-    while True:
-        color_sea = str(input("  Choose the color of the sea : ") or "lightcyan")
-        if color_sea.upper() not in unique_color:
-            print("\033[2A")
-            printe(f"    '{color_sea}' is not a valid color name in GMT")
-            show_color_rgb_chart()
-
-        else:
-            break
-    return color_sea
-
-
-def get_color_focmec():
-    print("  press 'enter' for default color (red)")
-    color_fm = str(input("  Choose the color of the beach ball : ") or "red")
-    return color_fm
+    return color.lower()
 
 
 def get_contour_interval(mapscale):
     """Input the contour interval and return the used interval value and earth relief resolution"""
-    match mapscale:
-        case num if num < 2778:
-            recom = 6.25
-            resolution = "01s"
-        case num if num in range(2778, 27775):
-            recom = 12.5
-            resolution = "03s"
-        case num if num in range(27775, 60000):
-            recom = 25
-            resolution = "15s"
-        case num if num in range(60000, 110000):
-            recom = 50
-            resolution = "30s"
-        case num if num in range(110000, 277750):
-            recom = 100
-            resolution = "30s"
-        case num if num in range(277750, 555500):
-            recom = 125
-            resolution = "30s"
-        case num if num in range(555500, 2777750):
-            recom = 250
-            resolution = "01m"
-        case num if num >= 2777750:
-            recom = 500
-            resolution = "02m"
+
+    intervals = [
+        (2778, 6.25, "01s"),
+        (27775, 12.5, "03s"),
+        (60000, 25, "15s"),
+        (110000, 50, "30s"),
+        (277750, 100, "30s"),
+        (555500, 125, "30s"),
+        (2777750, 250, "01m"),
+        (float("inf"), 500, "02m"),
+    ]
+
+    for threshold, recomend, resolution in intervals:
+        if mapscale < threshold:
+            break
 
     print("  Contour line is annotate every 4 interval")
-    print(f"  For this map, interval recomendation = {recom} meter")
+    print(f"  For this map, interval recomendation = {recomend} meter")
     while True:
-        interval = float(input("  Type in the contour interval:  ").strip() or recom)
-        if interval < recom:
+        interval = float(input("  Type in the contour interval:  ").strip() or recomend)
+        if interval < recomend:
             printe(
                 "    The contour interval might be too tight, proceed with cautions.."
             )
@@ -388,7 +358,7 @@ def get_contour_interval(mapscale):
             print("\033[2A")
             printe("    The contour interval is too large..")
 
-        elif interval < 1500.0 and interval >= recom:
+        elif interval < 1500.0 and interval >= recomend:
             break
         else:
             print("\033[2A")
@@ -398,7 +368,7 @@ def get_contour_interval(mapscale):
     return interval, resolution
 
 
-def show_grdimage_color_palette():
+def get_grdimage_color_palette():
     display_cpt = (
         input("  Display the 'Color Palette Tables' from GMT (y/n) ?:  ").strip() or "n"
     )
@@ -527,7 +497,7 @@ def get_date_start(req_type: str):
 
         if not re.match(r"^\d*$", date_start):
             print("\033[3A")
-            printe(ERROR_NUM)
+            printe(f"    '{date_start}' is not a valid input!")
             continue
 
         if len(date_start) not in [4, 8]:
@@ -573,7 +543,7 @@ def get_date_end(req_type: str):
 
         if not re.match(r"^\d*$", date_end):
             print("\033[3A")
-            printe(ERROR_NUM)
+            printe(f"    '{date_end}' is not a valid input!")
             continue
 
         if len(date_end) not in [4, 8]:
@@ -618,6 +588,29 @@ def get_date_start_end(req_type: str):
             )
             break
     return in_date_start, in_date_end, days
+
+
+def get_tecto_source(map_scale):
+    recom = lambda recom: ["", "", "★"] if map_scale == "small" else ["★", "★", ""]
+    print("  Available tectonic/geological structure data:")
+    print(f"   {recom[0]} 1. Compiled from Geological Maps of Indonesia 1:250,000")
+    print(
+        f"   {recom[1]} 2. Regional Geological Maps of Indonesia (Sukamto et al, 2011)"
+    )
+    print(f"   {recom[2]} 3. Active Fault Maps of Indonesia (Soehaemi et al, 2021)")
+    print("      ★: recomended based on map size")
+    while True:
+        source = input("  Select the tectonic data source (1/2/3):  ")
+        if source == ["1", "1.", "*1", "*1."]:
+            source = "Indo-compiled"
+        elif source == ["2", "2.", "*2", "*2."]:
+            source = "Sukamto, 2011"
+        elif source == ["3", "3.", "*3", "*3."]:
+            source = "Soehaemi, 2021"
+        else:
+            printe(f"    '{source}' is not valid input, choose between 1, 2, or 3")
+            continue
+        return source
 
 
 def get_inset_loc():

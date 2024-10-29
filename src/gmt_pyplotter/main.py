@@ -54,16 +54,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# cek aplikasi dependency: gmt, gawk, awk   : done
-# fix finalization bar                      : done
-# layer kontur tidak mau plot               : done
-# layer tektonik belum ada info             : done
-# eq legend and colorbar                    : not yet
-# cek semua fungsi                          : done
-# color land sea focmec, error code         : done
-# output format ditambahkan                 : done
-# color_bar location                        : done
-# grdimage belom fix untuk download
-# pindahan utils download ke map class
