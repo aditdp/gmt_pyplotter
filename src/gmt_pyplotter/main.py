@@ -1,7 +1,9 @@
+import os, sys, cursor
 from gmt_pyplotter import map_class, utils
 from gmt_pyplotter import user_input as ui
 
-import os, sys, cursor
+# import map_class, utils
+# import user_input as ui
 
 
 def main():
@@ -49,7 +51,6 @@ def main():
             sys.exit(130)
         except SystemExit:
             os._exit(130)
-            raise
 
 
 if __name__ == "__main__":

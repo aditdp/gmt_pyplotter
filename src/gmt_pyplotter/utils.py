@@ -1,14 +1,15 @@
-import os, shutil, sys, subprocess, time, cursor
+import os, shutil, sys, subprocess, time, cursor, csv, math
 from datetime import datetime, timedelta
+from functools import wraps
 from urllib.request import urlretrieve, urlopen
 from PIL import Image
 from showinfm import show_in_file_manager
 
 match os.name:
     case "posix":
-        SHELL = "True"
+        shel = "True"
     case "nt":
-        SHELL = "False"
+        shel = "False"
 
 
 def header():
@@ -24,6 +25,42 @@ def closing():
     print(" End of the program ".center(80, "="))
 
 
+def disable_input(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if os.name == "posix":
+            import termios
+            import tty
+
+            fd = sys.stdin.fileno()
+            original_attributes = termios.tcgetattr(fd)
+            tty.setcbreak(fd)
+        elif os.name == "nt":
+            import msvcrt
+
+        result = None
+        try:
+            result = func(*args, **kwargs)
+        except KeyboardInterrupt:
+            print("\n\n    KeyboardInterrupt: Exiting the program..\n")
+            closing()
+            cursor.show()
+            try:
+                sys.exit(130)
+            except SystemExit:
+                os._exit(130)
+        finally:
+            if os.name == "posix":
+                termios.tcsetattr(fd, termios.TCSANOW, original_attributes)
+            elif os.name == "nt":
+                while msvcrt.kbhit():
+                    msvcrt.getch()  # Clear the buffer
+        return result
+
+    return wrapper
+
+
+@disable_input
 def is_connected():
     cursor.hide()
     print("  checking internet connection.")
@@ -42,6 +79,7 @@ def is_connected():
         return False
 
 
+@disable_input
 def app_usage_log(*args):
     log_path = os.path.join(os.path.dirname(__file__), "app_usage.log")
     if os.path.isfile(log_path):
@@ -77,13 +115,13 @@ def system_check():
     with open(log_path, "r", encoding="utf-8") as file:
         file.seek(0)
         last_time = file.readline().strip()
-        print(last_time)
+
         if last_time:
             date_time_obj = datetime.strptime(last_time, "%Y-%m-%d %H:%M:%S.%f")
             if datetime.now() > date_time_obj + timedelta(days=1):
-                is_gawk_gmt_installed()
+                is_gmt_installed()
         else:
-            is_gawk_gmt_installed()
+            is_gmt_installed()
 
 
 def screen_clear():
@@ -99,11 +137,9 @@ def check_terminal_size():
     def print_terminal_size(info):
         for _ in range(current_lines - 5):
             print("")
-            print("\033[38;5;208m\033[3mgmt_pyplotter\033[00m")
-            print(current_columns * "-")
-            print(
-                f"Current terminal size: {current_columns} columns, {current_lines} rows"
-            )
+        print("\033[38;5;208m\033[3mgmt_pyplotter\033[00m")
+        print(current_columns * "-")
+        print(f"Current terminal size: {current_columns} columns, {current_lines} rows")
         print(info)
         input("press \033[3m'Enter'\033[00m after resize the terminal window...")
         cursor.show()
@@ -128,32 +164,126 @@ def check_terminal_size():
             )
 
 
-def file_writer(*args):
-    flag = args[0]
-    script_name = args[1]
-    layer = args[2]
-    output_dir = args[3]
-    print(layer)
-
-    with open(os.path.join(output_dir, script_name), flag, encoding="utf-8") as file:
-        file.write(layer)
+import csv
 
 
-def gcmt_downloader(*args):
-    fm_file = args[0]
-    coord = args[1]
-    date = args[2]
-    url_gcmt = "https://www.globalcmt.org/cgi-bin/globalcmt-cgi-bin/CMT5/form?itype=ymd&yr={}&mo={}&day={}&otype=nd&nday={}&llat={}&ulat={}&llon={}&ulon={}&list=6".format(
+def find_min_max(filename: str, file_path: str, column_index: int, delimiter=","):
+    """
+    Returns:
+    a dictionary:
+    {
+    "min" : minimum value
+    "max" : maximum value
+    "count" : total line count
+    "range" :  max - min
+    "trim_min" : minimum value of trimmed data (5 percent)
+    "trim_max" : maximum value of trimmed data (5 percent)
+    "trim_range" : trim_max - trim_min
+    """
+
+    line_count = 0
+    data = []
+
+    with open(os.path.join(file_path, filename), "r") as file:
+        for line in file:
+            values = line.strip().split(delimiter)
+            try:
+                data.append(float(values[column_index]))
+            except (ValueError, IndexError):
+                continue
+            line_count += 1
+
+    minimum = min(data)
+    maximum = max(data)
+    range = maximum - minimum
+    # min max value from trimmed 5 percent top and bottom of data
+    trim_count = int(len(data) * (0.02))
+    sorted_data = sorted(data)
+    if trim_count == 0:
+        trimmed_data = sorted_data
+    else:
+        trimmed_data = sorted_data[trim_count:-trim_count]
+    trim_min = min(trimmed_data)
+    trim_max = max(trimmed_data)
+    trim_range = trim_max - trim_min
+
+    info = {
+        "min": minimum,
+        "max": maximum,
+        "count": line_count,
+        "range": range,
+        "trim_min": round(trim_min, -1),
+        "trim_max": round(trim_max, -1),
+        "trim_range": trim_range,
+    }
+
+    return info
+
+
+# def find_min_max(filename: str, file_path: str, column_index: int):
+#     """read data column and return min, max, n of row"""
+#     with open(os.path.join(file_path, filename), "r") as file:
+#         reader = csv.reader(file, delimiter=",")
+#         next(reader)  # Skip header if necessary
+
+#         values = [float(row[column_index]) for row in reader if row[column_index]]
+#         n_row = len(reader)
+#         min_value = min(values)
+#         max_value = max(values)
+
+#         return min_value, max_value, n_row
+
+
+@disable_input
+def file_writer(
+    flag: str,
+    script_name_format: str,
+    text: str,
+    output_dir: str,
+):
+
+    with open(
+        os.path.join(output_dir, script_name_format), flag, encoding="utf-8"
+    ) as file:
+        file.write(text)
+
+
+def is_file_empty(filepath, filename):
+    file = os.path.join(filepath, filename)
+    return os.path.getsize(file) == 0
+
+
+def reorder_columns(input_file, output_file, new_order):
+    with open(input_file, "r", encoding="utf-8") as infile:
+        reader = csv.reader(infile)
+
+        # Write reordered columns to new file
+        with open(output_file, "w", newline="", encoding="utf-8") as outfile:
+            writer = csv.writer(outfile)
+            for row in reader:
+                reordered_row = [row[i] for i in new_order]
+                writer.writerow(reordered_row)
+
+
+@disable_input
+def gcmt_downloader(fm_file, file_path, coord, date, mag, depth):
+
+    url_gcmt = "https://www.globalcmt.org/cgi-bin/globalcmt-cgi-bin/CMT5/form?itype=ymd&yr={}&mo={}&day={}&otype=nd&nday={}&lmw={}&umw={}&llat={}&ulat={}&llon={}&ulon={}&lhd={}&uhd={}&list=6".format(
         date[0].strftime("%Y"),
         date[0].strftime("%m"),
         date[0].strftime("%d"),
         date[2],
+        mag[0],
+        mag[1],
         coord[2],
         coord[3],
         coord[0],
         coord[1],
+        depth[0],
+        depth[1],
     )
-    print(f"retrieving data from:\n {url_gcmt}")
+
+    print(f"  retrieving data from:\n {url_gcmt}")
     page = urlopen(url_gcmt)
     html = page.read().decode("utf-8")
     start_index = html.rfind("<pre>") + 6
@@ -162,63 +292,170 @@ def gcmt_downloader(*args):
     print("data acquired..")
     # input("press any key to continue..")
     print(data_gcmt)
-    with open(fm_file, "w", encoding="utf-8") as file:
-        file.write(data_gcmt)
-    print("done..")
+    file_writer("w", f"{fm_file[0:-4]}_ORI.txt", data_gcmt, file_path)
+    if is_file_empty(file_path, f"{fm_file[0:-4]}_ORI.txt") == False:
+        add_mag_to_meca_file(
+            os.path.join(file_path, f"{fm_file[0:-4]}_ORI.txt"),
+            os.path.join(file_path, fm_file),
+        )
+
+        print("done..")
+        status = "good"
+    else:
+        print("   No earthquake event found..")
+        status = "empty"
+    return status
 
 
-def usgs_downloader(*args):
-    usgs_cata_file = args[0]
-    coord = args[1]
-    date = args[2]
+def calculate_mw(mrr, mtt, mpp, mrt, mrp, mtp, iexp):
+    """# Calculate the seismic moment M0"""
+    m0 = (
+        math.sqrt(0.5 * (mrr**2 + mtt**2 + mpp**2 + 2 * (mrt**2 + mrp**2 + mtp**2)))
+        * 10**iexp
+    )
+    # Calculate the moment magnitude Mw
+    mw = (2 / 3) * math.log10(m0) - 10.7
+    return round(mw, 1)
+
+
+def add_mag_to_meca_file(input_file, output_file, delimiter=" ", output_delimiter="\t"):
+    """read the input file and insert the Mw value to the last column of meca file and save as output file name"""
+    with open(input_file, "r") as infile, open(output_file, "w", newline="") as outfile:
+        reader = csv.reader((line.rstrip() for line in infile), delimiter=delimiter)
+        writer = csv.writer(outfile, delimiter=output_delimiter)
+
+        # Process each row and calculate Mw
+        for row in reader:
+            try:
+                # Check if row is correctly split
+                if len(row) != 13:
+                    raise ValueError("Row does not contain exactly 13 values")
+
+                lon = float(row[0])
+                lat = float(row[1])
+                depth = float(row[2])
+                mrr = float(row[3])
+                mtt = float(row[4])
+                mpp = float(row[5])
+                mrt = float(row[6])
+                mrp = float(row[7])
+                mtp = float(row[8])
+                iexp = int(row[9])
+                x = row[10]
+                y = row[11]
+                name = row[12]
+
+                # Calculate Mw
+                mw = calculate_mw(mrr, mtt, mpp, mrt, mrp, mtp, iexp)
+
+                # Write the new row with Mw appended
+                writer.writerow(row + [mw])
+            except ValueError as e:
+                print(f"    Error processing row: {row}. Error: {e}")
+
+
+@disable_input
+def usgs_downloader(eq_file: str, file_path: str, coord, date, mag, depth):
     url_usgs = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=csv"
     url_loc = f"minlongitude={coord[0]}&maxlongitude={coord[1]}&minlatitude={coord[2]}&maxlatitude={coord[3]}"
     url_date = f"starttime={date[0]}&endtime={date[1]}"
-    url = f"{url_usgs}&{url_date}&{url_loc}"
-
+    url_mag = f"minmagnitude={mag[0]}&maxmagnitude={mag[1]}"
+    url_dep = f"mindepth={depth[0]}&maxdepth={depth[1]}"
+    url = f"{url_usgs}&{url_date}&{url_loc}&{url_mag}&{url_dep}"
     print(f"\nRetrieving data from: {url}")
-    urlretrieve(url, usgs_cata_file)
-    print("\n Done.. \n")
+    print("\n    This may take a while...")
+    urlretrieve(url, os.path.join(file_path, f"{eq_file[0:-4]}_ORI.txt"))
+    if is_file_empty(file_path, f"{eq_file[0:-4]}_ORI.txt") == False:
+
+        reorder_columns(
+            os.path.join(file_path, f"{eq_file[0:-4]}_ORI.txt"),
+            os.path.join(file_path, eq_file),
+            [2, 1, 3, 4, 0],
+        )
+        print("\n Done.. \n")
+        status = "good"
+    else:
+        print("   No earthquake event found..")
+        status = "empty"
+    return status
 
 
-def isc_downloader(*args):
-    isc_cata_file = args[0]
-    coord = args[1]
-    date = args[2]
-    mag = args[3]
-    depth = args[4]
-    url_isc = "https://www.isc.ac.uk/cgi-bin/web-db-run?request=COMPREHENSIVE&out_format=CATCSV&bot_lat={}&top_lat={}&left_lon={}&right_lon={}&searchshape=RECT&start_year={}&start_month={}&start_day={}&end_year={}&end_month={}&end_day={}&min_dep={}&max_dep={}&min_mag={}&max_mag={}".format(
+@disable_input
+def isc_downloader(eq_file, file_path, coord, date, mag, depth):
+
+    url_isc = "https://www.isc.ac.uk/cgi-bin/web-db-run?request=COMPREHENSIVE&out_format=CATCSV&searchshape=RECT"
+
+    url_loc = "&bot_lat={}&top_lat={}&left_lon={}&right_lon={}".format(
         coord[2],
         coord[3],
         coord[0],
         coord[1],
+    )
+    url_date = "&start_year={}&start_month={}&start_day={}&end_year={}&end_month={}&end_day={}".format(
         date[0].strftime("%Y"),
         date[0].strftime("%m"),
         date[0].strftime("%d"),
         date[1].strftime("%Y"),
         date[1].strftime("%m"),
         date[1].strftime("%d"),
+    )
+    url_dep = "&min_dep={}&max_dep={}&min_mag={}&max_mag={}".format(
         depth[0],
         depth[1],
         mag[0],
         mag[1],
     )
-    print(f"data file is located in {isc_cata_file}")
+    url = url_isc + url_loc + url_date + url_dep
+    print(f"\nEq data save as {eq_file}\n")
     # input("pause")
-    print(f"retrieving data from:\n {url_isc}")
-    page = urlopen(url_isc)
+    print(f"retrieving data from:\n{url}")
+    print("\n\nMay be take some time ..")
+    page = urlopen(url)
     html = page.read().decode("utf-8")
     start_index = html.rfind("<pre>") + 252
     end_index = html.rfind("STOP") - 1
     data_isc = html[start_index:end_index]
     print("data acquired..")
     # input("press any key to continue..")
-    print(data_isc)
-    with open(isc_cata_file, "w", encoding="utf-8") as file:
-        file.write(data_isc)
-    print("done..")
+    # print(data_isc)
+    file_writer("w", f"{eq_file[0:-4]}_ORI.txt", data_isc, file_path)
+    if is_file_empty(file_path, f"{eq_file[0:-4]}_ORI.txt") == False:
+        reorder_columns(
+            os.path.join(file_path, f"{eq_file[0:-4]}_ORI.txt"),
+            os.path.join(file_path, eq_file),
+            [6, 5, 7, 11, 3, 4],
+        )
+        print("done..")
+        status = "good"
+    else:
+        print("   No earthquake event found..")
+        status = "empty"
+    return status
 
 
+@disable_input
+def grdimage_download(name, outputdir, coord_script, resolution, masking):
+    """downloading grdimage data and returning the 'grd filename'"""
+    if masking is True:
+        command = "clip"
+        replace = "-Sb1/NaN"
+    else:
+        command = "cut"
+        replace = ""
+    grd_file = f"{name}-GRD.nc"
+    dl_gridfile = subprocess.run(
+        f"gmt grd{command} {coord_script} {resolution} -G{os.path.join(outputdir ,grd_file)} {replace} ",
+        text=True,
+        shell={os.name == "posix"},
+        capture_output=True,
+        check=True,
+    )
+    infow = dl_gridfile.stdout
+    print(infow)
+    return grd_file
+
+
+@disable_input
 def gmt_execute(name, output_dir):
     match os.name:
         case "posix":
@@ -232,7 +469,7 @@ def gmt_execute(name, output_dir):
 
     msg_from_gmt = subprocess.run(
         command,
-        shell=SHELL,
+        shell=shel,
         capture_output=True,
         text=True,
         check=False,
@@ -240,7 +477,7 @@ def gmt_execute(name, output_dir):
     if msg_from_gmt.stderr:
         finalization_bar("fail")
         print(
-            f"\033[38;5;196mError while runing GMT script:\033[00m\n{msg_from_gmt.stderr}\n"
+            f"\n\n\033[38;5;196mError while runing GMT script:\033[00m\n{msg_from_gmt.stderr}\n"
         )
         print("GMT script failed to run..")
         closing()
@@ -340,6 +577,7 @@ def finalization_bar(stage):
     cursor.show()
 
 
+@disable_input
 def info_display(args):
     pr1 = args[0]
     pr2 = args[1]
@@ -349,7 +587,7 @@ def info_display(args):
     pr6 = args[5]
     pr21 = args[6]
     pr31 = args[7]
-    duration_total = 5
+    duration_total = 3
     duration_blink = 0.1
     end_time = time.time() + duration_total
     begin_loading = args[8]
@@ -366,7 +604,7 @@ def info_display(args):
         print("\033[0;0H")
         logo_brin(pr1, pr21, pr31, pr4, pr5, pr6)
         loading_bar(begin_loading, 100)
-        begin_loading += 2
+        begin_loading += 7
         time.sleep(duration_blink)
     cursor.show()
 
@@ -377,14 +615,10 @@ def info_generator(status: int, apps: str, version=""):
     bg_green = "\033[48;5;46m\033[38;5;198m"
     bg_yellow = "\033[48;5;226m\033[38;5;198m"
     bg_red = "\033[48;5;196m"
-    if apps == "gawk":
-        apps_long = "GNU AWK"
-        process = 2
-        app_color = "\033[38;5;208m"
-    else:
-        apps_long = "Generic Mapping Tools"
-        process = 52
-        app_color = "\033[38;5;33m"
+
+    apps_long = "Generic Mapping Tools"
+    process = 2
+    app_color = "\033[38;5;33m"
 
     match status:
         case 1:  # Apps installed, version match
@@ -417,62 +651,17 @@ def info_generator(status: int, apps: str, version=""):
     return [pr1, pr2, pr3, pr4, pr5, pr6, pr21, pr31, process]
 
 
-def is_gawk_gmt_installed():
-    """Check whether GAWK and GMT is installed in the system."""
-    from gmt_pyplotter.user_input import add_gawk_path
+def is_gmt_installed():
+    """Check is GMT installed in the system with supported version."""
 
     gmt_location = shutil.which("gmt")
-    gawk_location = shutil.which("gawk")
-    if gawk_location:
-        getgawkversion = subprocess.Popen(
-            "gawk --version", shell=SHELL, stdout=subprocess.PIPE
-        ).stdout
-        gawk_ver = getgawkversion.read()
-        gawk_ver = gawk_ver[8:13]
-        gawk_ver = gawk_ver.decode().rstrip()
-        info_stat = info_generator(1, "gawk", gawk_ver)
-        info_display(info_stat)
-        # time.sleep(1)
-    else:
-        gawk_default_path = r"C:\Program Files (x86)\GnuWin32\bin\gawk.exe"
 
-        if os.path.isfile(gawk_default_path):
-            print("  'gawk' is installed but not added to 'PATH' environment variable")
-            print("  Adding 'gawk' to 'PATH'...")
-            os.system(
-                r"""For /F "Skip=2Tokens=1-2*" %A In ('Reg Query HKCU\Environment /V PATH 2^>Nul') Do setx PATH "%C;C:\Program Files (x86)\GnuWin32\bin"""
-            )
-        else:
-            info_stat = info_generator(3, "gawk")
-            screen_clear()
-            info_display(info_stat)
-            instal_gawk = input(
-                "\n\n  Do you want to install 'gawk' (GnuWin32) now (y/n)?  "
-            )
-            match instal_gawk:
-                case "y" | "yes" | "Y" | "Yes" | "YES":
-                    gawk_installer_path = os.path.join(
-                        os.path.dirname(__file__), "data", "gawk-3.1.6-1-setup.exe"
-                    )
-
-                    subprocess.call(gawk_installer_path)
-                    print("")
-
-                    gawk_path = add_gawk_path()
-                    edit_path = (
-                        r"""For /F "Skip=2Tokens=1-2*" %A In ('Reg Query HKCU\Environment /V PATH 2^>Nul') Do setx PATH "%C;"""
-                        + gawk_path
-                    )
-                    os.system(edit_path)
-
-        closing()
-        sys.exit("\nRestart the terminal before run 'gmt_pyplotter' again..")
     if gmt_location:
         if len(gmt_location) > 23:
             gmt_location = f"...{gmt_location[-20:]}"
 
         getgmtversion = subprocess.Popen(
-            "gmt --version", shell=SHELL, stdout=subprocess.PIPE
+            "gmt --version", shell=shel, stdout=subprocess.PIPE
         ).stdout
         gmt_ver = getgmtversion.read()
         gmt_ver = gmt_ver.decode().rstrip()

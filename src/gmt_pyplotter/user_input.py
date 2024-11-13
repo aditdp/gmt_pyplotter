@@ -5,10 +5,11 @@ import os.path
 import re
 import sys
 
-# from gmt_pyplotter import utils
-# from gmt_pyplotter.data.color_list import unique_color, palette_name
-import utils
-from data.color_list import unique_color, palette_name
+from gmt_pyplotter import utils
+from gmt_pyplotter.data.color_list import unique_color, palette_name
+
+# import utils
+# from data.color_list import unique_color, palette_name
 
 
 def separator(func):
@@ -29,35 +30,6 @@ def printc(conclusion_msg):
     print(f"\033[38;5;81m{conclusion_msg}\033[00m")
     print("-" * 80)
     print("")
-
-
-def add_gawk_path():
-    print("  Adding GnuWin32 program to 'PATH' environment variable.. ")
-    if os.path.isfile(r"C:\Program Files (x86)\GnuWin32\bin\gawk.exe"):
-        real_gawk_path = r"C:\Program Files (x86)\GnuWin32\bin"
-    else:
-        while True:
-            print("  Locate the installed GnuWin32 'bin' directory.. ")
-            gawk_path_raw = askdirectory(
-                initialdir=os.getcwd(),
-                mustexist=True,
-                title="  Browse for 'GnuWin32/bin' folder.. ",
-            )
-            gawk_path_win = ""
-            gawk_path_split = gawk_path_raw.split("/")
-
-            for x in range(len(gawk_path_split)):
-                gawk_path_win += gawk_path_raw[x] + "\\"
-            if os.path.isfile(os.path.join(gawk_path_win, "bin", "gawk.exe")):
-                real_gawk_path = os.path.join(gawk_path_win, "bin")
-                break
-            elif os.path.isfile(os.path.join(gawk_path_win, "gawk.exe")):
-                real_gawk_path = gawk_path_win
-                break
-            else:
-                printe(f"  '{gawk_path_win}' is not valid GnuWin32 folder")
-    printc(f"  gawk path = {real_gawk_path}")
-    return real_gawk_path
 
 
 def get_save_loc():
@@ -92,6 +64,36 @@ def get_save_loc():
         printc(f"  Output directory : \033[3m...{output_path[-54:]}\033[0m")
 
     return output_path
+
+
+def get_file_name(output_dir):
+    while True:
+        input_file_name = input("  Name of the map: ") or "untitled_map"
+        input_file_name = input_file_name.replace(" ", "_")
+        for i in ["bmp", "eps", "jpg", "pdf", "png", "ppm", "ps"]:
+            path = os.path.join(output_dir, f"{input_file_name}.{i}")
+            check_file = os.path.isfile(path)
+
+            if check_file is True:
+                printe(
+                    f"    The '{input_file_name}.{i}' in output folder, already exist"
+                )
+                overwrite = input("    Overwrite the file (y/n) ? ")
+                if overwrite.upper() in ["N", "NO", ""]:
+                    print("    Choose another name")
+                    continue
+                if overwrite.upper() in ["Y", "YES"]:
+                    print("\n    Map file will be overwrite!")
+                    printc(f"  Map will be save as {input_file_name}.{i}")
+                    break
+                else:
+                    printe(f"    '{overwrite}' is not valid input")
+
+            else:
+                printc(f"  Map will be save as '{input_file_name}'")
+
+                break
+        return input_file_name
 
 
 def get_file_out_format():
@@ -145,35 +147,6 @@ def get_file_out_format():
 
     printc(f"  File output format = '{file_format}'")
     return file_format
-
-
-def get_file_name(output_dir, file_format):
-    while True:
-        input_file_name = input("  Name of the map: ") or "untitled_map"
-        input_file_name = input_file_name.replace(" ", "_")
-        path = os.path.join(output_dir, f"{input_file_name}.{file_format}")
-        check_file = os.path.isfile(path)
-
-        if check_file is True:
-            printe(
-                f"    The '{input_file_name}.{file_format}' in output folder, already exist"
-            )
-            overwrite = input("    Overwrite the file (y/n) ? ")
-            if overwrite.upper() in ["N", "NO"]:
-                print("    Choose another name")
-                continue
-            if overwrite.upper() in ["Y", "YES"]:
-                print("\n    Map file will be overwrite!")
-                printc(f"  Map will be save as {input_file_name}{file_format}")
-                break
-            else:
-                printe(f"    '{overwrite}' is not valid input")
-
-        else:
-            printc(f"  Map will be save as {input_file_name}.{file_format}")
-
-            break
-    return input_file_name
 
 
 def get_projection():
@@ -267,8 +240,8 @@ def get_coord_x():
                 printe("  Input numbers only!")
 
     while True:
-        bound_x1 = get_boundary("  Western boundary (W): ", 107)
-        bound_x2 = get_boundary("  Eastern boundary (E): ", 108)
+        bound_x1 = get_boundary("  Western boundary (W): ", 106)
+        bound_x2 = get_boundary("  Eastern boundary (E): ", 107)
 
         if bound_x1 < bound_x2:
             printc(f"  Longitude : {bound_x1}  -  {bound_x2} ")
@@ -293,8 +266,8 @@ def get_coord_y():
                 printe("  Input numbers only!")
 
     while True:
-        bound_y1 = get_boundary("  Southern boundary (S): ", -7)
-        bound_y2 = get_boundary("  Northern boundary (N): ", -6)
+        bound_y1 = get_boundary("  Southern boundary (S): ", -8)
+        bound_y2 = get_boundary("  Northern boundary (N): ", -6.8)
 
         if bound_y1 < bound_y2:
             printc(f"  Latitude : {bound_y1}  -  {bound_y2} ")
@@ -329,7 +302,7 @@ def get_color(use: str, default: str):
 
 def get_contour_interval(mapscale):
     """Input the contour interval and return the used interval value and earth relief resolution"""
-
+    # magic
     intervals = [
         (2778, 6.25, "01s"),
         (27775, 12.5, "03s"),
@@ -384,7 +357,7 @@ def get_grdimage_color_palette():
     pl.columnize(palette_name, displaywidth=80)
 
     while True:
-        color_cpt = input("  Choose the CPT:  ").lower()
+        color_cpt = input("  Choose the CPT:  ").lower() or "world"
         if color_cpt in palette_name:
             printc(f"  '{color_cpt}' is used for the color palette table")
             break
@@ -420,41 +393,54 @@ def get_grdimage_shading():
     return shading_code, shade
 
 
-def get_grdimage_resolution():
+def get_grdimage_resolution(map_scale):
+    if map_scale == "large":
+        strike = "\033[9m"
+    else:
+        strike = ""
     while True:
         print("  Choose the image resolution")
         print(
-            """  SRTMGL1 (internet connection needed)
-            1. Full   (01 second)
-            2. High   (15 second)
-            3. Medium (01 minute)
-            4. Low    (05 minute)
-            5. Crude  (10 minute)
+            f"""  SRTMGL1 (internet connection needed)
+           {strike} 1. Full   (01 second) \033[0m
+            2. Vhigh  (03 second)
+            3. High   (15 second)
+            4. Medium (01 minute)
+            5. Low    (05 minute)
+            6. Crude  (10 minute)
             """
         )
         grd_resolution = input("  Image resolution: ").strip() or "2"
-        match grd_resolution:
-            case "1" | "Full" | "full":
+        match grd_resolution.lower():
+            case "1" | "full" if map_scale == "small":
                 resolution = "@earth_relief_01s"
                 grd_res = "1 second"
                 printc("  using the 'full' image resolution (1 second)")
                 break
-            case "2" | "High" | "high":
+            case "1" | "full" if map_scale == "large":
+                printe("    The map size too large for this resolution")
+                continue
+            case "2" | "vhigh" | "v high" | "very high" | "v":
+                resolution = "@earth_relief_03s"
+                grd_res = "3 second"
+                printc("  using the 'very high' image resolution (3 second)")
+                break
+            case "3" | "high":
                 resolution = "@earth_relief_15s"
                 grd_res = "15 second"
                 printc("  using the 'high' image resolution (15 seconds)")
                 break
-            case "3" | "Medium" | "medium":
+            case "4" | "medium":
                 resolution = "@earth_relief_01m"
                 grd_res = "1 minute"
                 printc("  using the 'medium' image resolution (1 minute)")
                 break
-            case "4" | "low" | "Low":
+            case "5" | "low":
                 resolution = "@earth_relief_05m"
                 grd_res = "5 minute"
                 printc("  using the 'low' image resolution (5 minutes)")
                 break
-            case "5" | "Crude" | "crude":
+            case "6" | "crude":
                 resolution = "@earth_relief_10m"
                 grd_res = "10 minute"
                 printc("  using the 'crude' image resolution (10 minutes)")
@@ -591,21 +577,24 @@ def get_date_start_end(req_type: str):
 
 
 def get_tecto_source(map_scale):
-    recom = lambda recom: ["", "", "★"] if map_scale == "small" else ["★", "★", ""]
+    if map_scale == "small":
+        recom = ["★", " ", " "]
+    else:
+        recom = [" ", "★", "★"]
     print("  Available tectonic/geological structure data:")
     print(f"   {recom[0]} 1. Compiled from Geological Maps of Indonesia 1:250,000")
     print(
         f"   {recom[1]} 2. Regional Geological Maps of Indonesia (Sukamto et al, 2011)"
     )
     print(f"   {recom[2]} 3. Active Fault Maps of Indonesia (Soehaemi et al, 2021)")
-    print("      ★: recomended based on map size")
+    print("\n   ★ = recomended based on map size")
     while True:
         source = input("  Select the tectonic data source (1/2/3):  ")
-        if source == ["1", "1.", "*1", "*1."]:
+        if source in ["1", "1.", "*1", "*1."]:
             source = "Indo-compiled"
-        elif source == ["2", "2.", "*2", "*2."]:
+        elif source in ["2", "2.", "*2", "*2."]:
             source = "Sukamto, 2011"
-        elif source == ["3", "3.", "*3", "*3."]:
+        elif source in ["3", "3.", "*3", "*3."]:
             source = "Soehaemi, 2021"
         else:
             printe(f"    '{source}' is not valid input, choose between 1, 2, or 3")
@@ -627,39 +616,39 @@ def get_inset_loc():
         print(" |__________|___|__________|___|__________|\n")
         justify = input("Enter the location of map inset:  ")
         match justify:
-            case "1":
+            case "1" | "1." | "(1)":
                 justify = "TL"
                 just_code = "Top Left"
                 break
-            case "2":
+            case "2" | "2." | "(2)":
                 justify = "TC"
                 just_code = "Top Center"
                 break
-            case "3":
+            case "3" | "3." | "(3)":
                 justify = "TR"
                 just_code = "Top Right"
                 break
-            case "4":
+            case "4" | "4." | "(4)":
                 justify = "ML"
                 just_code = "Mid Left"
                 break
-            case "5":
+            case "5" | "5." | "(5)":
                 justify = "MC"
                 just_code = "Mid Center"
                 break
-            case "6":
+            case "6" | "6." | "(6)":
                 justify = "MR"
                 just_code = "Mid Right"
                 break
-            case "7":
+            case "7" | "7." | "(7)":
                 justify = "BL"
                 just_code = "Bot Left"
                 break
-            case "8":
+            case "8" | "8." | "(8)":
                 justify = "BC"
                 just_code = "Bot Center"
                 break
-            case "9":
+            case "9" | "9." | "(9)":
                 justify = "BR"
                 just_code = "Bot Right"
                 break
@@ -667,11 +656,7 @@ def get_inset_loc():
                 print("\033[2A")
                 printe("    Error, choose between 1 - 9 !")
 
-    if justify == "TR":
-        just_north = "TL"
-    else:
-        just_north = "TR"
-    return justify, just_north, just_code
+    return justify, just_code
 
 
 def get_eq_mag_range(req_type):
@@ -693,7 +678,7 @@ def get_eq_mag_range(req_type):
 
     while True:
         min_eq_mag = get_magnitude(
-            f"  Enter the minimum magnitude for the {req_type}", "0"
+            f"  Enter the minimum magnitude for the {req_type}", "3"
         )
         max_eq_mag = get_magnitude(
             f"  Enter the maximum magnitude for the {req_type}", "10"
@@ -812,28 +797,31 @@ def get_eq_directory():
 
 
 def get_column_order(eq_path):
-    """User inputing column order for lon lat dep mag"""
+    """User inputing column order for lon lat dep mag,
+    return data status "good"/"bad" and list column index  [lon, lat, dep, mag]"""
 
     # file name, longitude, lattitude, magnitude, depth
-    print("  column order separate with space and the first column start from 1")
+    print("  column order separate with space and the first column start from 0")
     print("  data required : longitude, lattitude, depth, magnitude")
     # print("6 column if date and time in different column, or 5 if combined")
-    print("  for example: 1 2 3 4 ")
+    print("  for example: 0,1,2,3  ")
     print("  |longitude|--|lattitude|--|depth|--|magnitude|--|Date-Time|")
     while True:
         eq_column_order = list(map(input("  the column order:  ").strip().split))[:4]
-        eq_column_lon = eq_column_order[0]
-        eq_column_lat = eq_column_order[1]
-        eq_column_dep = eq_column_order[2]
-        eq_column_mag = eq_column_order[3]
+
         col_check = check_eq_column(eq_path, eq_column_order)
         if col_check == "bad":
             print("\033[1A")
             printe("    The column order not match with the data")
+            try_again = input("    Try again (y/n)? ").strip() or "y"
+            if try_again.lower() in ["n", "no", "na"]:
+                break
+            else:
+                continue
         else:
             break
 
-    return eq_column_lon, eq_column_lat, eq_column_dep, eq_column_mag
+    return col_check
 
 
 def check_eq_column(eq_path, order: list):
