@@ -835,7 +835,14 @@ class MainMap(Layer):
 
     def plot_beachball(self):
         beach_ball = f"""gmt begin {self.name}-fm eps\n\techo 1.5 1.5 50 163 80 -21 6 0 0 | gmt meca -R1/2/1/2 -JM10c -Sa1c -Ggrey40 -E-\ngmt end\n"""
-        os.system(beach_ball)
+        if os.name == "posix":
+            os.system(beach_ball)
+        else:
+            utils.file_writer(
+                "w", f"{self.name}plot.bat", beach_ball, self.dir_output_path
+            )
+            os.system(os.path.join(self.dir_output_path, f"{self.name}plot.bat"))
+            os.remove(os.path.join(self.dir_output_path, f"{self.name}plot.bat"))
 
     def legend_constructor(self):
         """try horizontal legend first"""
@@ -952,7 +959,7 @@ G 0.1c"""
             utils.file_writer("w", legend_file, legend_text, self.dir_output_path)
 
             legend_plot = f"\tgmt legend -DJBC+o0c/1c+w{legend_width}c -F+p1p+gwhite+r {legend_file}\n"
-            depth_label = f"-B{self.cpt_depth_interval}+{min_depth} -Bx+lEq\ depth -By+lkm --FONT_LABEL=10p --MAP_FRAME_PEN=0.75p\n"
+            depth_label = f"-B{self.cpt_depth_interval}+{min_depth} -Bx+lEq_depth -By+lkm --FONT_LABEL=10p --MAP_FRAME_PEN=0.75p\n"
             depth_colorbar_plot = f"\tgmt colorbar -DJBC+o{legend_width*0.25}c/2.3c+w{legend_width*0.3}c+h+e0.3c -C{self.name}-depth.cpt {depth_label}"
 
         if hasattr(self, "grdimage"):
