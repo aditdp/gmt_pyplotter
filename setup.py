@@ -14,7 +14,7 @@ setup(
     package_data={
         "gmt_pyplotter": [
             "data/*.png",
-            "data/fault_sukamto2011",
+            "data/*.txt",
             "data/*.exe",
             "*log",
         ]
