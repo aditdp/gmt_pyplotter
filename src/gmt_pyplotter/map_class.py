@@ -155,7 +155,7 @@ class Layer(FileName, Coordinate, Projection):
             print("  7. Map inset")
             print("  0. Cancel")
             print(
-                "\x1B[3m  The layers followed by * need internet  connection to    operate\x1B[0m"
+                "\x1B[3m  The layers followed by * need internet connection to operate\x1B[0m"
             )
             print("." * 70 + "\n")
 
