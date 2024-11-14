@@ -667,11 +667,11 @@ def get_eq_mag_range(req_type):
             try:
                 print(prompt)
                 magnitude = int(input(DEFAULT).strip() or default)
-                if 0 <= magnitude <= 10:
+                if 1 < magnitude <= 10:
                     return magnitude
                 else:
                     print("\033[3A")
-                    printe("    Magnitude range between 0 to 10")
+                    printe("    Magnitude range between 1 to 10")
             except ValueError:
                 print("\033[3A")
                 printe("    Error, input numbers only!")
@@ -791,9 +791,48 @@ def get_eq_directory():
         ),
         title="  Open earthquake data location",
     )
-
-    printc(f"Earthquake data : {eq_path}")
+    if len(eq_path) > 60:
+        print_path = f"...{eq_path[-58:]}"
+    else:
+        print_path = eq_path
+    printc(f"  Earthquake data : {print_path}")
     return eq_path
+
+
+def get_user_data_delimiter():
+    delimiters = [",", "\t", ";", "|", ":", " "]
+    delimiter_names = {
+        ",": "Comma     ",
+        ";": "Semicolon ",
+        ":": "Colon     ",
+        "|": "Pipe      ",
+        "\t": "Tab       ",
+        " ": "Space     ",
+    }
+
+    print("  Available delimiters:")
+    for i, delimiter in enumerate(delimiters, start=1):
+
+        display_delimiter = repr(delimiter)
+        delimiter_name = delimiter_names.get(delimiter, "Unknown")
+        print(f"    {i}.  {delimiter_name} ({display_delimiter})")
+
+    while True:
+        try:
+            user_choice = int(input("Please choose a delimiter by number: ")) - 1
+            if 0 <= user_choice < len(delimiters):
+                user_delimiter = delimiters[user_choice]
+
+                return user_delimiter
+
+            else:
+                print(
+                    f"Invalid choice. Please enter a number between 1 and {len(delimiters)}."
+                )
+        except ValueError:
+            print(
+                f"Invalid input. Please enter a number between 1 and {len(delimiters)}."
+            )
 
 
 def get_column_order(eq_path):
@@ -801,15 +840,39 @@ def get_column_order(eq_path):
     return data status "good"/"bad" and list column index  [lon, lat, dep, mag]"""
 
     # file name, longitude, lattitude, magnitude, depth
-    print("  column order separate with space and the first column start from 0")
-    print("  data required : longitude, lattitude, depth, magnitude")
+    print("\n  Reorder the earthquake data column\n")
+    print(
+        " \033[38;5;227m column order : longitude, lattitude, depth, magnitude,\033[0m additional: Date/Time"
+    )
     # print("6 column if date and time in different column, or 5 if combined")
-    print("  for example: 0,1,2,3  ")
-    print("  |longitude|--|lattitude|--|depth|--|magnitude|--|Date-Time|")
-    while True:
-        eq_column_order = list(map(input("  the column order:  ").strip().split))[:4]
+    print("  For example, column order of USGS data :")
+    print("  0                         1         2          3      4    5     ")
+    print("  time,                     latitude, longitude, depth, mag, magType,...")
+    print("  2023-12-13T23:35:10.892Z, -6.8597,  106.5246,  10.4,  4.5, mb,,....")
+    print("  2023-12-07T19:00:46.583Z, -6.985,   106.5272,  8.978, 4,   mb,....")
+    print("\n \033[38;5;227m Input as:  2,1,3,4,0 \033[0m\n")
 
-        col_check = check_eq_column(eq_path, eq_column_order)
+    print("\n  The first 6 row of 'user' data :")
+    print("_ " * 40)
+    with open(eq_path, "r", encoding="utf-8") as sample:
+        for _ in range(6):
+            line = sample.readline().strip()
+            if line:
+                print(f"    {line[:74]}")
+            else:
+
+                break
+    print("_ " * 40)
+    print("")
+    while True:
+        eq_column_order = input(
+            f"  the column order(lon,lat,dep,mag,[time]/[date,time]): "
+        )
+        eq_column_order = [int(num.strip()) for num in eq_column_order.split(",")]
+        if len(eq_column_order) != len(set(eq_column_order)):
+            printe("    Error, no column duplicate allowed..")
+            continue
+        col_check = check_eq_column(eq_path, eq_column_order[:4])
         if col_check == "bad":
             print("\033[1A")
             printe("    The column order not match with the data")
@@ -821,16 +884,24 @@ def get_column_order(eq_path):
         else:
             break
 
-    return col_check
+    return col_check, eq_column_order
 
 
 def check_eq_column(eq_path, order: list):
     """Check every column if its match the data (lon, lat, depth, magnitude)"""
-    print(eq_path, order)
+    try:
+        delimiter = get_user_data_delimiter()
+
+    except:
+        printe("    The delimiter is not correct..")
+
     with open(eq_path, encoding="utf-8") as f:
-        for columns in f:
-            lon = columns[{order[0]}]
-            if lon < -180 or lon > 180:
+        f.readline()
+        for line in f:
+            columns = line.strip().split(delimiter)
+
+            lon = float(columns[order[0]].strip())
+            if int(lon) < -180 or int(lon) > 180:
                 print("\033[1A")
                 printe(
                     "    Error: longitude value should between -180 and 180 degree. \n    Check the column order"
@@ -838,8 +909,8 @@ def check_eq_column(eq_path, order: list):
                 status = "bad"
                 break
 
-            lat = columns[{order[1]}]
-            if lat < -90 or lat > 90:
+            lat = float(columns[order[1]].strip())
+            if int(lat) < -90 or int(lat) > 90:
                 print("\033[1A")
                 printe(
                     "    Error: lattitude value should between -90 and 90 degree. \n    Check the column order"
@@ -847,8 +918,8 @@ def check_eq_column(eq_path, order: list):
                 status = "bad"
                 break
 
-            depth = columns[{order[2]}]
-            if depth < 0 or depth > 1000:
+            depth = float(columns[order[2]].strip())
+            if int(depth) < 0 or int(depth) > 1000:
                 print("\033[1A")
                 printe(
                     "    Error: depth value should between 0 and 1000 km. \n    Check the column order"
@@ -856,8 +927,8 @@ def check_eq_column(eq_path, order: list):
                 status = "bad"
                 break
 
-            mag = columns[{order[3]}]
-            if mag < 0 or mag > 10:
+            mag = float(columns[order[3]].strip())
+            if int(mag) < 0 or int(mag) > 10:
                 print("\033[1A")
                 printe(
                     "    Error: magnitude value should between 0 - 10. \n    Check the column order"

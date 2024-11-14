@@ -425,14 +425,25 @@ class Layer(FileName, Coordinate, Projection):
                 )
             case "From user":
                 eq_file_from_user = ui.get_eq_directory()
+
                 eq_data_status, order = ui.get_column_order(eq_file_from_user)
-                eq_file = (f"{self.name}-USER_catalog.txt",)
+                eq_file = f"{self.name}-USER_catalog.txt"
                 utils.reorder_columns(
                     eq_file_from_user,
                     os.path.join(self.dir_output_path, eq_file),
                     order,
                 )
-                self.req_eq_date = ("-", "-", "-")
+                parse_eq_date = utils.find_min_max(
+                    eq_file, self.dir_output_path, 4, date=True
+                )
+                if parse_eq_date == None:
+                    self.req_eq_date = ("-", "-", "-")
+                else:
+                    self.req_eq_date = (
+                        parse_eq_date["min"],
+                        parse_eq_date["max"],
+                        parse_eq_date["range"],
+                    )
 
         if eq_data_status in ["bad", "empty"]:
             return {"script": "change"}
@@ -441,6 +452,7 @@ class Layer(FileName, Coordinate, Projection):
             eq_file,
             self.dir_output_path,
             2,
+            trim=True,
         )
         self.real_eq_mag = utils.find_min_max(
             eq_file,
@@ -457,14 +469,20 @@ class Layer(FileName, Coordinate, Projection):
         gmtmath = f"\tgmt math {eq_file} -C3 SQR {self.eq_scaler} MUL = | "
         gmtplot = f"gmt plot -C{cpt_file} -Scc -Wfaint,grey30 -Ve \n"
         added_gmt_script = makecpt + gmtmath + gmtplot
+        try:
+            date_start = self.req_eq_date[0].strftime("%Y-%m-%d")
+            date_end = self.req_eq_date[1].strftime("%Y-%m-%d")
+        except AttributeError:
+            date_start = "-"
+            date_end = "-"
         self.earthquake = {
             "Type": "earthquake",
             "Source": self.eq_source,
             "nEvent": self.real_eq_depth["count"],
             "Depth": f"{int(self.real_eq_depth['min'])}-{int(self.real_eq_depth['max'])} km",
             "Magnitude": f"{self.real_eq_mag['min']}-{self.real_eq_mag['max']}",
-            "Date start": str(self.req_eq_date[0]),
-            "Date end": str(self.req_eq_date[1]),
+            "Date start": date_start,
+            "Date end": date_end,
             "script": added_gmt_script,
         }
 
@@ -858,7 +876,10 @@ class MainMap(Layer):
             eq = "Yes"
             min_depth = self.real_eq_depth["trim_min"]
             legend_width = round(self.map_width_cm * 0.75)
-            date = f"{self.req_eq_date[0].strftime('%b %d, %Y')}\nL -\nL 10p,Helvetica C to {self.req_eq_date[1].strftime('%b %d, %Y')}"
+            try:
+                date = f"{self.req_eq_date[0].strftime('%b %d, %Y')}\nL -\nL 10p,Helvetica C to {self.req_eq_date[1].strftime('%b %d, %Y')}"
+            except AttributeError:
+                date = "--- to ---"
             eq_mag_min = round(self.real_eq_mag["min"])
             eq_mag_max = round(self.real_eq_mag["max"])
             eq_mag_range = eq_mag_max - eq_mag_min + 1

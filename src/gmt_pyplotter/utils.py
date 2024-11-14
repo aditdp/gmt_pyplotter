@@ -1,5 +1,6 @@
 import os, shutil, sys, subprocess, time, cursor, csv, math
 from datetime import datetime, timedelta
+from dateutil import parser
 from functools import wraps
 from urllib.request import urlretrieve, urlopen
 from PIL import Image
@@ -167,7 +168,14 @@ def check_terminal_size():
 import csv
 
 
-def find_min_max(filename: str, file_path: str, column_index: int, delimiter=","):
+def find_min_max(
+    filename: str,
+    file_path: str,
+    column_index: int,
+    delimiter="\t",
+    trim=False,
+    date=False,
+):
     """
     Returns:
     a dictionary:
@@ -187,51 +195,51 @@ def find_min_max(filename: str, file_path: str, column_index: int, delimiter=","
     with open(os.path.join(file_path, filename), "r") as file:
         for line in file:
             values = line.strip().split(delimiter)
-            try:
-                data.append(float(values[column_index]))
-            except (ValueError, IndexError):
-                continue
+            if date == False:
+                try:
+                    data.append(float(values[column_index]))
+                except (ValueError, IndexError):
+                    continue
+            if date == True:
+                try:
+                    data.append(parser.parse(values[column_index], ignoretz=True))
+                except (ValueError, IndexError):
+                    continue
             line_count += 1
-
+    if line_count == 0:
+        return None
     minimum = min(data)
     maximum = max(data)
     range = maximum - minimum
-    # min max value from trimmed 5 percent top and bottom of data
-    trim_count = int(len(data) * (0.02))
-    sorted_data = sorted(data)
-    if trim_count == 0:
-        trimmed_data = sorted_data
-    else:
-        trimmed_data = sorted_data[trim_count:-trim_count]
-    trim_min = min(trimmed_data)
-    trim_max = max(trimmed_data)
-    trim_range = trim_max - trim_min
-
     info = {
         "min": minimum,
         "max": maximum,
         "count": line_count,
         "range": range,
-        "trim_min": round(trim_min, -1),
-        "trim_max": round(trim_max, -1),
-        "trim_range": trim_range,
     }
+    # min max value from trimmed 5 percent top and bottom of data
+    if trim == True:
+        trim_count = int(len(data) * (0.02))
+        sorted_data = sorted(data)
+        if trim_count == 0:
+            trimmed_data = sorted_data
+        else:
+            trimmed_data = sorted_data[trim_count:-trim_count]
+        trim_min = min(trimmed_data)
+        trim_max = max(trimmed_data)
+        trim_range = trim_max - trim_min
 
+        info = {
+            "min": minimum,
+            "max": maximum,
+            "count": line_count,
+            "range": range,
+            "trim_min": round(trim_min, -1),
+            "trim_max": round(trim_max, -1),
+            "trim_range": trim_range,
+        }
+        return info
     return info
-
-
-# def find_min_max(filename: str, file_path: str, column_index: int):
-#     """read data column and return min, max, n of row"""
-#     with open(os.path.join(file_path, filename), "r") as file:
-#         reader = csv.reader(file, delimiter=",")
-#         next(reader)  # Skip header if necessary
-
-#         values = [float(row[column_index]) for row in reader if row[column_index]]
-#         n_row = len(reader)
-#         min_value = min(values)
-#         max_value = max(values)
-
-#         return min_value, max_value, n_row
 
 
 @disable_input
@@ -259,9 +267,9 @@ def reorder_columns(input_file, output_file, new_order):
 
         # Write reordered columns to new file
         with open(output_file, "w", newline="", encoding="utf-8") as outfile:
-            writer = csv.writer(outfile)
+            writer = csv.writer(outfile, delimiter="\t")
             for row in reader:
-                reordered_row = [row[i] for i in new_order]
+                reordered_row = [row[i].strip() for i in new_order]
                 writer.writerow(reordered_row)
 
 
@@ -412,7 +420,7 @@ def isc_downloader(eq_file, file_path, coord, date, mag, depth):
     print("\n\nMay be take some time ..")
     page = urlopen(url)
     html = page.read().decode("utf-8")
-    start_index = html.rfind("<pre>") + 252
+    start_index = html.rfind("EVENTID") - 2
     end_index = html.rfind("STOP") - 1
     data_isc = html[start_index:end_index]
     print("data acquired..")
@@ -575,6 +583,11 @@ def finalization_bar(stage):
             print(stage2fail)
             loading_bar(81, 99)
     cursor.show()
+
+
+def date_min_max(file_path: str, column: int):
+    pass
+    # with open(file_path, )
 
 
 @disable_input
