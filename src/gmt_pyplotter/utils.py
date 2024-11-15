@@ -722,11 +722,6 @@ def is_gmt_installed():
         )
 
 
-def check_gmt_path():
-    gmt_default = r"C:\programs\gmt6\bin\gmt.exe"
-    os.path.isfile(gmt_default)
-
-
 def logo_brin(*args):
     pr1 = args[0]
     pr2 = args[1]
