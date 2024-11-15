@@ -696,6 +696,7 @@ def is_gmt_installed():
             )
 
     else:
+        gmt_default = r"C:\programs\gmt6\bin\gmt.exe"
         info_stat = info_generator(3, "gmt")
         screen_clear()
         info_display(info_stat)
@@ -703,7 +704,6 @@ def is_gmt_installed():
         print("")
         closing()
         if os.path.isfile(gmt_default) == True:
-            gmt_default = r"C:\programs\gmt6\bin\gmt.exe"
             print("\033[38;5;46m\n")
             print(r"GMT found at 'C:\programs\gmt6\bin' ")
             print(
