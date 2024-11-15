@@ -667,11 +667,11 @@ def info_generator(status: int, apps: str, version=""):
 def is_gmt_installed():
     """Check is GMT installed in the system with supported version."""
 
-    gmt_location = shutil.which("gmt")
+    gmt_path = shutil.which("gmt")
 
-    if gmt_location:
-        if len(gmt_location) > 23:
-            gmt_location = f"...{gmt_location[-20:]}"
+    if gmt_path:
+        if len(gmt_path) > 23:
+            gmt_path = f"...{gmt_path[-20:]}"
 
         getgmtversion = subprocess.Popen(
             "gmt --version", shell=shel, stdout=subprocess.PIPE
@@ -702,9 +702,29 @@ def is_gmt_installed():
         input()
         print("")
         closing()
+        if os.path.isfile(gmt_default) == True:
+            gmt_default = r"C:\programs\gmt6\bin\gmt.exe"
+            print("\033[38;5;46m\n")
+            print(r"GMT found at 'C:\programs\gmt6\bin' ")
+            print(
+                "\033[38;5;220m\033[3mUpdating 'Path' Environment Variable...\033[0m\033[38;5;81m"
+            )
+            time.sleep(2)
+            os.system(
+                r"""For /F "Skip=2Tokens=1-2*" %A In ('Reg Query HKCU\Environment /V PATH 2^>Nul') Do setx PATH "%C;C:\programs\gmt6\bin """
+            )
+            time.sleep(1)
+            sys.exit(
+                "\n\033[38;5;196mReopen the terminal for the changes take effect \033[0;0m\n"
+            )
         sys.exit(
             " \n\033[38;5;196mError: \033[38;5;220m\033[3mgmt_pyplotter\033[0m\033[38;5;220m requires Generic Mapping Tools to operate\n       Please install GMT before running the program\n       https://docs.generic-mapping-tools.org/latest/install.html\033[0;0m \n"
         )
+
+
+def check_gmt_path():
+    gmt_default = r"C:\programs\gmt6\bin\gmt.exe"
+    os.path.isfile(gmt_default)
 
 
 def logo_brin(*args):
